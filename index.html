@@ -113,7 +113,8 @@
   </style>
 
   <!-- Supabase JS (CDN) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.ne<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+t/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
@@ -250,6 +251,22 @@
   </div>
 
   <script>
+
+
+    // ✅ Captura errores JS y los muestra como toast (para no quedar "en silencio")
+window.addEventListener("error", (e) => {
+  const msg = (e?.message || e?.error?.message || "Error desconocido");
+  const where = (e?.filename ? `\n${e.filename}:${e.lineno}:${e.colno}` : "");
+  try { toast("❌ JS: " + msg + where, "error", 9000); } catch {}
+  console.log("JS ERROR:", e);
+});
+
+window.addEventListener("unhandledrejection", (e) => {
+  const msg = (e?.reason?.message || String(e?.reason || "Promise error"));
+  try { toast("❌ Promise: " + msg, "error", 9000); } catch {}
+  console.log("UNHANDLED:", e);
+});
+
     // =========================
     // 1) CONFIGURA TUS KEYS
     // =========================
@@ -413,7 +430,7 @@
         const { error } = await supabase.auth.signInWithOAuth({
           provider: "google",
           options: {
-            redirectTo: window.location.href
+            redirectTo: window.location.origin + window.location.pathname
           }
         });
         if (error) throw error;
@@ -696,3 +713,4 @@
   </script>
 </body>
 </html>
+
