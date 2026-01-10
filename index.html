@@ -112,9 +112,9 @@
     :root{ color-scheme: dark; }
   </style>
 
-  <!-- Supabase JS (CDN) -->
-  <script src="https://cdn.jsdelivr.ne<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-t/npm/@supabase/supabase-js@2"></script>
+  <!-- Supabase JS (UMD correcto para navegador) -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
 </head>
 
 <body>
@@ -274,6 +274,12 @@ window.addEventListener("unhandledrejection", (e) => {
     const SUPABASE_ANON_KEY = "sb_publishable_sXfYr31mrDcwkgPDY9pWsQ_C6x1yRhc";
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+
+console.log("Supabase loaded?", !!window.supabase, window.supabase?.createClient ? "OK" : "NO");
+toast("Supabase: " + (window.supabase?.createClient ? "OK" : "NO"), window.supabase?.createClient ? "success" : "error", 4000);
+
+    
 
     // =========================
     // 2) ESTADO
@@ -713,4 +719,5 @@ window.addEventListener("unhandledrejection", (e) => {
   </script>
 </body>
 </html>
+
 
