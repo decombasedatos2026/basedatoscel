@@ -250,474 +250,443 @@
     </div>
   </div>
 
-  <script>
+ <script>
+  // =========================
+  // 0) UI helpers (PRIMERO)
+  // =========================
+  const $ = (id) => document.getElementById(id);
 
+  function toast(msg, type="info", ms=3500){
+    const c = $("toastContainer");
+    if (!c) { alert(msg); return; }
+    const node = document.createElement("div");
+    node.className = "toast " + type;
+    node.textContent = msg;
+    c.appendChild(node);
+    setTimeout(() => { try{ node.remove(); }catch{} }, ms);
+  }
 
-    // ✅ Captura errores JS y los muestra como toast (para no quedar "en silencio")
-window.addEventListener("error", (e) => {
-  const msg = (e?.message || e?.error?.message || "Error desconocido");
-  const where = (e?.filename ? `\n${e.filename}:${e.lineno}:${e.colno}` : "");
-  try { toast("❌ JS: " + msg + where, "error", 9000); } catch {}
-  console.log("JS ERROR:", e);
-});
+  // ✅ Captura errores JS (ya con toast disponible)
+  window.addEventListener("error", (e) => {
+    const msg = (e?.message || e?.error?.message || "Error desconocido");
+    const where = (e?.filename ? `\n${e.filename}:${e.lineno}:${e.colno}` : "");
+    toast("❌ JS: " + msg + where, "error", 9000);
+    console.log("JS ERROR:", e);
+  });
 
-window.addEventListener("unhandledrejection", (e) => {
-  const msg = (e?.reason?.message || String(e?.reason || "Promise error"));
-  try { toast("❌ Promise: " + msg, "error", 9000); } catch {}
-  console.log("UNHANDLED:", e);
-});
+  window.addEventListener("unhandledrejection", (e) => {
+    const msg = (e?.reason?.message || String(e?.reason || "Promise error"));
+    toast("❌ Promise: " + msg, "error", 9000);
+    console.log("UNHANDLED:", e);
+  });
 
-    // =========================
-    // 1) CONFIGURA TUS KEYS
-    // =========================
-    const SUPABASE_URL = "https://ggznwqocjvfawjmbtzda.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_sXfYr31mrDcwkgPDY9pWsQ_C6x1yRhc";
+  // =========================
+  // 1) CONFIG
+  // =========================
+  const SUPABASE_URL = "https://ggznwqocjvfawjmbtzda.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_sXfYr31mrDcwkgPDY9pWsQ_C6x1yRhc";
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // ✅ Inicializar Supabase con chequeo visible
+  let supabase = null;
+  try{
+    if (!window.supabase?.createClient) {
+      throw new Error("No cargó Supabase (window.supabase no existe). Revisa el <script src> del UMD.");
+    }
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    toast("✅ Supabase cargado OK", "success", 2500);
+  }catch(e){
+    toast("❌ " + (e?.message || e), "error", 12000);
+    console.log("SUPABASE INIT ERROR:", e);
+  }
 
+  // Si supabase no cargó, no seguimos (evita botones muertos sin explicación)
+  if (!supabase) {
+    // deja los botones pero avisamos
+    try { $("authBadge").textContent = "Error cargando Supabase"; } catch {}
+    throw new Error("Supabase no inicializado.");
+  }
 
-console.log("Supabase loaded?", !!window.supabase, window.supabase?.createClient ? "OK" : "NO");
-toast("Supabase: " + (window.supabase?.createClient ? "OK" : "NO"), window.supabase?.createClient ? "success" : "error", 4000);
+  // =========================
+  // 2) ESTADO
+  // =========================
+  const state = {
+    user: null,
+    allowed: false,
+    selectedId: null,
+    memberDraft: blankMember()
+  };
 
-    
+  // =========================
+  // 3) Helpers de formulario
+  // =========================
+  function setStatus(text){
+    $("statusBadge").textContent = text;
+  }
 
-    // =========================
-    // 2) ESTADO
-    // =========================
-    const state = {
-      user: null,
-      authed: false,
-      allowed: false,
-      selectedId: null,
-      memberDraft: blankMember(),
-      results: []
+  function setSelectedId(id){
+    state.selectedId = id || null;
+    $("selectedIdLabel").textContent = state.selectedId ? String(state.selectedId) : "—";
+  }
+
+  function blankMember(){
+    return {
+      first_names: "",
+      last_names: "",
+      identification: "",
+      age: "",
+      gender: "",
+      church_role: "",
+      address: "",
+      city: "",
+      birth_date: "",
+      is_sympathizer: false,
+      observations: ""
     };
+  }
 
-    // =========================
-    // 3) UI HELPERS
-    // =========================
-    const $ = (id) => document.getElementById(id);
+  function fillForm(m){
+    $("first_names").value = m.first_names || "";
+    $("last_names").value = m.last_names || "";
+    $("identification").value = m.identification || "";
+    $("age").value = (m.age ?? "") === null ? "" : (m.age ?? "");
+    $("gender").value = m.gender || "";
+    $("church_role").value = m.church_role || "";
+    $("address").value = m.address || "";
+    $("city").value = m.city || "";
+    $("birth_date").value = m.birth_date || "";
+    $("is_sympathizer").value = String(!!m.is_sympathizer);
+    $("observations").value = m.observations || "";
+  }
 
-    function toast(msg, type="info", ms=3500){
-      const c = $("toastContainer");
-      const node = document.createElement("div");
-      node.className = "toast " + type;
-      node.textContent = msg;
-      c.appendChild(node);
-      setTimeout(() => { try{ node.remove(); }catch{} }, ms);
+  function readForm(){
+    return {
+      first_names: $("first_names").value.trim(),
+      last_names: $("last_names").value.trim(),
+      identification: $("identification").value.trim(),
+      age: (() => {
+        const raw = ($("age").value || "").trim();
+        return raw === "" ? null : Number(raw);
+      })(),
+      gender: $("gender").value || null,
+      church_role: ($("church_role").value || "").trim() || null,
+      address: ($("address").value || "").trim() || null,
+      city: ($("city").value || "").trim() || null,
+      birth_date: $("birth_date").value || null,
+      is_sympathizer: $("is_sympathizer").value === "true",
+      observations: ($("observations").value || "").trim() || null
+    };
+  }
+
+  function setWriteEnabled(enabled){
+    $("btnSave").disabled = !enabled;
+    $("btnDelete").disabled = !enabled;
+  }
+
+  // =========================
+  // 4) AUTH + allowed
+  // =========================
+  function paintAuth(){
+    if (state.user){
+      $("authBadge").textContent = state.user.email || "Sesión iniciada";
+      $("btnLogin").style.display = "none";
+      $("btnLogout").style.display = "";
+      $("avatar").textContent = (state.user.email || "G").trim()[0]?.toUpperCase() || "G";
+    } else {
+      $("authBadge").textContent = "Sin sesión";
+      $("btnLogin").style.display = "";
+      $("btnLogout").style.display = "none";
+      $("avatar").textContent = "G";
     }
+    setWriteEnabled(!!state.user && !!state.allowed);
+  }
 
-    function setStatus(text){
-      $("statusBadge").textContent = text;
-    }
+  async function checkAllowed(){
+    state.allowed = false;
+    if (!state.user?.email) return;
 
-    function setSelectedId(id){
-      state.selectedId = id || null;
-      $("selectedIdLabel").textContent = state.selectedId ? String(state.selectedId) : "—";
-    }
+    const email = String(state.user.email).toLowerCase();
 
-    function blankMember(){
-      return {
-        first_names: "",
-        last_names: "",
-        identification: "",
-        age: "",
-        gender: "",
-        church_role: "",
-        address: "",
-        city: "",
-        birth_date: "",
-        is_sympathizer: false,
-        observations: ""
-      };
-    }
+    const { data, error } = await supabase
+      .from("allowed_emails")
+      .select("email")
+      .eq("email", email)
+      .maybeSingle();
 
-    function fillForm(m){
-      $("first_names").value = m.first_names || "";
-      $("last_names").value = m.last_names || "";
-      $("identification").value = m.identification || "";
-      $("age").value = (m.age ?? "") === null ? "" : (m.age ?? "");
-      $("gender").value = m.gender || "";
-      $("church_role").value = m.church_role || "";
-      $("address").value = m.address || "";
-      $("city").value = m.city || "";
-      $("birth_date").value = m.birth_date || "";
-      $("is_sympathizer").value = String(!!m.is_sympathizer);
-      $("observations").value = m.observations || "";
-    }
-
-    function readForm(){
-      return {
-        first_names: $("first_names").value.trim(),
-        last_names: $("last_names").value.trim(),
-        identification: $("identification").value.trim(),
-        age: (() => {
-          const raw = ($("age").value || "").trim();
-          return raw === "" ? null : Number(raw);
-        })(),
-        gender: $("gender").value || null,
-        church_role: ($("church_role").value || "").trim() || null,
-        address: ($("address").value || "").trim() || null,
-        city: ($("city").value || "").trim() || null,
-        birth_date: $("birth_date").value || null,
-        is_sympathizer: $("is_sympathizer").value === "true",
-        observations: ($("observations").value || "").trim() || null
-      };
-    }
-
-    function setWriteEnabled(enabled){
-      $("btnSave").disabled = !enabled;
-      $("btnDelete").disabled = !enabled;
-    }
-
-    // =========================
-    // 4) AUTH + allowed_emails
-    // =========================
-    function paintAuth(){
-      if (state.user){
-        $("authBadge").textContent = state.user.email || "Sesión iniciada";
-        $("btnLogin").style.display = "none";
-        $("btnLogout").style.display = "";
-        $("avatar").textContent = (state.user.email || "G").trim()[0]?.toUpperCase() || "G";
-      } else {
-        $("authBadge").textContent = "Sin sesión";
-        $("btnLogin").style.display = "";
-        $("btnLogout").style.display = "none";
-        $("avatar").textContent = "G";
-      }
-
-      // Solo habilitar escritura si: logueado + allowed
-      setWriteEnabled(!!state.user && !!state.allowed);
-    }
-
-    async function checkAllowed(){
+    if (error) {
+      console.log("allowed_emails read error:", error);
       state.allowed = false;
-
-      if (!state.user?.email) return;
-
-      // 1) leer allowed_emails con RLS/policy (RECOMENDADO)
-      // si no tienes policy de SELECT, esto fallará y te dará false.
-      const email = String(state.user.email).toLowerCase();
-
-      const { data, error } = await supabase
-        .from("allowed_emails")
-        .select("email")
-        .eq("email", email)
-        .maybeSingle();
-
-      if (error) {
-        console.log("allowed_emails read error:", error);
-        state.allowed = false;
-        return;
-      }
-
-      state.allowed = !!data?.email;
+      return;
     }
 
-    async function refreshSession(){
-      const { data } = await supabase.auth.getSession();
-      state.user = data?.session?.user || null;
+    state.allowed = !!data?.email;
+  }
 
-      if (state.user){
-        await checkAllowed();
-        if (!state.allowed){
-          toast("⚠️ Tu correo no está autorizado para editar. Solo podrás ver.", "info", 5000);
+  async function refreshSession(){
+    const { data } = await supabase.auth.getSession();
+    state.user = data?.session?.user || null;
+
+    if (state.user){
+      await checkAllowed();
+      if (!state.allowed){
+        toast("⚠️ Tu correo no está autorizado para editar. Solo podrás ver.", "info", 5000);
+      }
+    } else {
+      state.allowed = false;
+    }
+    paintAuth();
+  }
+
+  // ✅ IMPORTANTÍSIMO: prueba de click (para confirmar que el botón sí dispara)
+  $("btnLogin").addEventListener("click", async () => {
+    toast("🟦 Click: iniciar sesión", "info", 1500);
+
+    try{
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin + window.location.pathname
         }
-      } else {
-        state.allowed = false;
-      }
-
-      paintAuth();
-    }
-
-    $("btnLogin").addEventListener("click", async () => {
-      try{
-        // OAuth redirect funciona bien en móvil
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: "google",
-          options: {
-            redirectTo: window.location.origin + window.location.pathname
-          }
-        });
-        if (error) throw error;
-      } catch(e){
-        toast("❌ No se pudo iniciar sesión: " + (e?.message || e), "error");
-      }
-    });
-
-    $("btnLogout").addEventListener("click", async () => {
-      await supabase.auth.signOut();
-      state.user = null;
-      state.allowed = false;
-      paintAuth();
-      toast("✅ Sesión cerrada.", "success");
-    });
-
-    supabase.auth.onAuthStateChange(async () => {
-      await refreshSession();
-    });
-
-    // =========================
-    // 5) SEARCH + SUGGESTIONS
-    // =========================
-    function renderSuggestions(items){
-      const box = $("suggestions");
-      if (!items || items.length === 0){
-        box.style.display = "none";
-        box.innerHTML = "";
-        return;
-      }
-      box.style.display = "block";
-      box.innerHTML = "";
-
-      items.forEach((m) => {
-        const item = document.createElement("div");
-        item.className = "item";
-        item.innerHTML = `
-          <div>
-            <div style="font-weight:800;">${(m.first_names||"")} ${(m.last_names||"")}</div>
-            <div class="small">Doc: ${(m.identification||"")} · Ciudad: ${(m.city||"")}</div>
-          </div>
-          <div class="small muted">Seleccionar</div>
-        `;
-
-        // ✅ FIX Windows/móvil: seleccionar en pointerdown (antes del blur)
-        const onPick = (ev) => {
-          ev.preventDefault();
-          ev.stopPropagation();
-
-          state.memberDraft = { ...m };
-          fillForm(state.memberDraft);
-          setSelectedId(m.id);
-
-          renderSuggestions([]);
-          setStatus("Cargado (seleccionado)");
-          toast("✅ Miembro cargado.", "success");
-        };
-
-        item.addEventListener("pointerdown", onPick);
-        item.addEventListener("mousedown", onPick);
-
-        box.appendChild(item);
       });
-    }
-
-    // Evita que el blur mate el click en sugerencias
-    $("suggestions").addEventListener("pointerdown", (e) => e.preventDefault());
-    $("suggestions").addEventListener("mousedown", (e) => e.preventDefault());
-
-    function debounce(fn, wait=350){
-      let t=null;
-      return (...args) => {
-        clearTimeout(t);
-        t=setTimeout(() => fn(...args), wait);
-      };
-    }
-
-    async function searchMembers(q){
-      const query = String(q || "").trim();
-      if (!query) return [];
-
-      const like = `%${query}%`;
-
-      const { data, error } = await supabase
-        .from("members")
-        .select("*")
-        .or(`identification.ilike.${like},first_names.ilike.${like},last_names.ilike.${like}`)
-        .order("created_at", { ascending: false })
-        .limit(20);
-
       if (error) throw error;
-      return data || [];
+    } catch(e){
+      toast("❌ No se pudo iniciar sesión: " + (e?.message || e), "error", 7000);
     }
+  });
 
-    const autoSearch = debounce(async () => {
-      try{
-        const q = ($("searchBox").value || "").trim();
-        if (!q || q.length < 2){
-          renderSuggestions([]);
-          return;
-        }
-        const items = await searchMembers(q);
-        renderSuggestions(items);
-      } catch(e){
-        console.log(e);
+  $("btnLogout").addEventListener("click", async () => {
+    await supabase.auth.signOut();
+    state.user = null;
+    state.allowed = false;
+    paintAuth();
+    toast("✅ Sesión cerrada.", "success");
+  });
+
+  supabase.auth.onAuthStateChange(async () => {
+    await refreshSession();
+  });
+
+  // =========================
+  // 5) SEARCH + SUGGESTIONS
+  // =========================
+  function renderSuggestions(items){
+    const box = $("suggestions");
+    if (!items || items.length === 0){
+      box.style.display = "none";
+      box.innerHTML = "";
+      return;
+    }
+    box.style.display = "block";
+    box.innerHTML = "";
+
+    items.forEach((m) => {
+      const item = document.createElement("div");
+      item.className = "item";
+      item.innerHTML = `
+        <div>
+          <div style="font-weight:800;">${(m.first_names||"")} ${(m.last_names||"")}</div>
+          <div class="small">Doc: ${(m.identification||"")} · Ciudad: ${(m.city||"")}</div>
+        </div>
+        <div class="small muted">Seleccionar</div>
+      `;
+
+      const onPick = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        state.memberDraft = { ...m };
+        fillForm(state.memberDraft);
+        setSelectedId(m.id);
+
+        renderSuggestions([]);
+        setStatus("Cargado (seleccionado)");
+        toast("✅ Miembro cargado.", "success");
+      };
+
+      item.addEventListener("pointerdown", onPick);
+      item.addEventListener("mousedown", onPick);
+
+      box.appendChild(item);
+    });
+  }
+
+  $("suggestions").addEventListener("pointerdown", (e) => e.preventDefault());
+  $("suggestions").addEventListener("mousedown", (e) => e.preventDefault());
+
+  function debounce(fn, wait=350){
+    let t=null;
+    return (...args) => {
+      clearTimeout(t);
+      t=setTimeout(() => fn(...args), wait);
+    };
+  }
+
+  async function searchMembers(q){
+    const query = String(q || "").trim();
+    if (!query) return [];
+    const like = `%${query}%`;
+
+    const { data, error } = await supabase
+      .from("members")
+      .select("*")
+      .or(`identification.ilike.${like},first_names.ilike.${like},last_names.ilike.${like}`)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  const autoSearch = debounce(async () => {
+    try{
+      const q = ($("searchBox").value || "").trim();
+      if (!q || q.length < 2){
+        renderSuggestions([]);
+        return;
       }
-    }, 300);
+      const items = await searchMembers(q);
+      renderSuggestions(items);
+    } catch(e){
+      console.log(e);
+    }
+  }, 300);
 
-    $("searchBox").addEventListener("input", autoSearch);
-    $("searchBox").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") $("btnSearch").click();
-      if (e.key === "Escape") renderSuggestions([]);
-    });
-    $("searchBox").addEventListener("blur", () => {
-      setTimeout(() => renderSuggestions([]), 150);
-    });
+  $("searchBox").addEventListener("input", autoSearch);
+  $("searchBox").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") $("btnSearch").click();
+    if (e.key === "Escape") renderSuggestions([]);
+  });
+  $("searchBox").addEventListener("blur", () => {
+    setTimeout(() => renderSuggestions([]), 150);
+  });
 
-    $("btnSearch").addEventListener("click", async () => {
-      try{
-        const q = ($("searchBox").value || "").trim();
-        const items = await searchMembers(q);
-        renderSuggestions(items);
-      } catch(e){
-        toast("❌ Error buscando: " + (e?.message || e), "error");
+  $("btnSearch").addEventListener("click", async () => {
+    try{
+      const q = ($("searchBox").value || "").trim();
+      const items = await searchMembers(q);
+      renderSuggestions(items);
+    } catch(e){
+      toast("❌ Error buscando: " + (e?.message || e), "error");
+    }
+  });
+
+  $("btnClearSearch").addEventListener("click", () => {
+    $("searchBox").value = "";
+    renderSuggestions([]);
+    $("searchBox").focus();
+  });
+
+  // =========================
+  // 6) CRUD
+  // =========================
+  $("btnNew").addEventListener("click", () => {
+    state.memberDraft = blankMember();
+    fillForm(state.memberDraft);
+    setSelectedId(null);
+    setStatus("Nuevo");
+  });
+
+  $("btnSave").addEventListener("click", async () => {
+    try{
+      if (!state.user) { toast("⚠️ Debes iniciar sesión.", "info"); return; }
+      if (!state.allowed) { toast("⛔ Tu correo no está autorizado para guardar.", "error"); return; }
+
+      const m = readForm();
+
+      if (!m.first_names || !m.last_names || !m.identification){
+        toast("⚠️ Nombres, apellidos e identificación son obligatorios.", "info");
+        return;
       }
-    });
 
-    $("btnClearSearch").addEventListener("click", () => {
-      $("searchBox").value = "";
-      renderSuggestions([]);
-      $("searchBox").focus();
-    });
+      const ageNum = Number(m.age);
+      if (m.age === null || !Number.isFinite(ageNum) || ageNum < 0){
+        toast("⚠️ La edad es obligatoria y válida (>= 0).", "info");
+        return;
+      }
+      if (!m.gender){
+        toast("⚠️ El género es obligatorio.", "info");
+        return;
+      }
 
-    // =========================
-    // 6) CRUD
-    // =========================
-    $("btnNew").addEventListener("click", () => {
+      setStatus("Guardando...");
+
+      if (state.selectedId){
+        const { data, error } = await supabase
+          .from("members")
+          .update(m)
+          .eq("id", state.selectedId)
+          .select("*")
+          .single();
+        if (error) throw error;
+
+        state.memberDraft = { ...data };
+        fillForm(state.memberDraft);
+        setStatus("Guardado (actualizado)");
+        toast("✅ Cambios guardados.", "success");
+      } else {
+        const { data, error } = await supabase
+          .from("members")
+          .insert(m)
+          .select("*")
+          .single();
+        if (error) throw error;
+
+        state.memberDraft = { ...data };
+        fillForm(state.memberDraft);
+        setSelectedId(data.id);
+        setStatus("Guardado (nuevo)");
+        toast("✅ Guardado correctamente.", "success");
+      }
+    } catch(e){
+      console.log(e);
+      toast("❌ Error guardando: " + (e?.message || e), "error", 7000);
+      setStatus("Error");
+    }
+  });
+
+  $("btnDelete").addEventListener("click", async () => {
+    try{
+      if (!state.user) { toast("⚠️ Debes iniciar sesión.", "info"); return; }
+      if (!state.allowed) { toast("⛔ Tu correo no está autorizado para eliminar.", "error"); return; }
+      if (!state.selectedId){ toast("⚠️ Selecciona un miembro primero.", "info"); return; }
+
+      const nombre = `${$("first_names").value} ${$("last_names").value}`.trim();
+      const ok = confirm(`¿Eliminar a "${nombre || "este miembro"}"? Esta acción no se puede deshacer.`);
+      if (!ok) return;
+
+      setStatus("Eliminando...");
+      const { error } = await supabase.from("members").delete().eq("id", state.selectedId);
+      if (error) throw error;
+
       state.memberDraft = blankMember();
       fillForm(state.memberDraft);
       setSelectedId(null);
-      setStatus("Nuevo");
-    });
-
-    $("btnSave").addEventListener("click", async () => {
-      try{
-        if (!state.user) {
-          toast("⚠️ Debes iniciar sesión.", "info");
-          return;
-        }
-        if (!state.allowed) {
-          toast("⛔ Tu correo no está autorizado para guardar.", "error");
-          return;
-        }
-
-        const m = readForm();
-
-        if (!m.first_names || !m.last_names || !m.identification){
-          toast("⚠️ Nombres, apellidos e identificación son obligatorios.", "info");
-          return;
-        }
-
-        const ageNum = Number(m.age);
-        if (m.age === null || !Number.isFinite(ageNum) || ageNum < 0){
-          toast("⚠️ La edad es obligatoria y válida (>= 0).", "info");
-          return;
-        }
-        if (!m.gender){
-          toast("⚠️ El género es obligatorio.", "info");
-          return;
-        }
-
-        setStatus("Guardando...");
-
-        if (state.selectedId){
-          const { data, error } = await supabase
-            .from("members")
-            .update(m)
-            .eq("id", state.selectedId)
-            .select("*")
-            .single();
-
-          if (error) throw error;
-
-          state.memberDraft = { ...data };
-          fillForm(state.memberDraft);
-          setStatus("Guardado (actualizado)");
-          toast("✅ Cambios guardados.", "success");
-        } else {
-          const { data, error } = await supabase
-            .from("members")
-            .insert(m)
-            .select("*")
-            .single();
-
-          if (error) throw error;
-
-          state.memberDraft = { ...data };
-          fillForm(state.memberDraft);
-          setSelectedId(data.id);
-          setStatus("Guardado (nuevo)");
-          toast("✅ Guardado correctamente.", "success");
-        }
-      } catch(e){
-        console.log(e);
-        const msg = e?.message || String(e);
-        const raw = msg.toLowerCase();
-        const esDuplicado =
-          raw.includes("duplicate key") ||
-          raw.includes("unique constraint") ||
-          raw.includes("violates unique") ||
-          raw.includes("23505") ||
-          raw.includes("already exists") ||
-          raw.includes("ya existe");
-
-        if (esDuplicado){
-          toast("⚠️ Ese documento ya está registrado.", "info", 5000);
-        } else {
-          toast("❌ Error guardando: " + msg, "error", 6000);
-        }
-        setStatus("Error");
-      }
-    });
-
-    $("btnDelete").addEventListener("click", async () => {
-      try{
-        if (!state.user) {
-          toast("⚠️ Debes iniciar sesión.", "info");
-          return;
-        }
-        if (!state.allowed) {
-          toast("⛔ Tu correo no está autorizado para eliminar.", "error");
-          return;
-        }
-        if (!state.selectedId){
-          toast("⚠️ Selecciona un miembro primero.", "info");
-          return;
-        }
-
-        const nombre = `${$("first_names").value} ${$("last_names").value}`.trim();
-        const ok = confirm(`¿Eliminar a "${nombre || "este miembro"}"? Esta acción no se puede deshacer.`);
-        if (!ok) return;
-
-        setStatus("Eliminando...");
-        const { error } = await supabase
-          .from("members")
-          .delete()
-          .eq("id", state.selectedId);
-
-        if (error) throw error;
-
-        state.memberDraft = blankMember();
-        fillForm(state.memberDraft);
-        setSelectedId(null);
-        setStatus("Eliminado");
-        toast("✅ Eliminado correctamente.", "success");
-      } catch(e){
-        toast("❌ Error eliminando: " + (e?.message || e), "error");
-        setStatus("Error");
-      }
-    });
-
-    // =========================
-    // 7) PWA register
-    // =========================
-    if ("serviceWorker" in navigator){
-      window.addEventListener("load", async () => {
-        try{
-          await navigator.serviceWorker.register("./sw.js");
-        } catch(e){
-          console.log("SW register error:", e);
-        }
-      });
+      setStatus("Eliminado");
+      toast("✅ Eliminado correctamente.", "success");
+    } catch(e){
+      toast("❌ Error eliminando: " + (e?.message || e), "error");
+      setStatus("Error");
     }
+  });
 
-    // init
-    fillForm(state.memberDraft);
-    setSelectedId(null);
-    setWriteEnabled(false);
-    refreshSession();
-  </script>
+  // =========================
+  // 7) PWA register
+  // =========================
+  if ("serviceWorker" in navigator){
+    window.addEventListener("load", async () => {
+      try{ await navigator.serviceWorker.register("./sw.js"); }
+      catch(e){ console.log("SW register error:", e); }
+    });
+  }
+
+  // init
+  fillForm(state.memberDraft);
+  setSelectedId(null);
+  setWriteEnabled(false);
+  refreshSession();
+</script>
+
 </body>
 </html>
+
 
 
