@@ -4,10 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <meta name="theme-color" content="#0b1020" />
-  <link rel="manifest" href="./manifest.webmanifest" />
-  <link rel="icon" href="./icons/icon-192.png" />
 
-  <title>IPUC · Miembros (PWA)</title>
+  <!-- ✅ SOLO manifest.json (sin SW) -->
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icons/icon-192.png">
+
+  <title>IPUC · Miembros</title>
 
   <style>
     :root{
@@ -17,625 +19,242 @@
     *{box-sizing:border-box}
     body{
       margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
-      background:
-        radial-gradient(1200px 600px at 20% 10%, rgba(76,125,255,0.25), transparent 60%),
-        radial-gradient(1000px 500px at 90% 30%, rgba(45,212,191,0.18), transparent 60%),
-        var(--bg);
+      background: var(--bg);
     }
-    .header{position:sticky;top:0;backdrop-filter:blur(12px);background:rgba(11,16,32,.75);border-bottom:1px solid var(--border);z-index:5}
-    .header-inner{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;gap:10px;flex-wrap:wrap}
-    .brand{display:flex;flex-direction:column;gap:2px}
-    .brand .title{font-weight:900;letter-spacing:.2px}
-    .small{font-size:12px;color:var(--muted)}
-    .container{max-width:1200px;margin:0 auto;padding:16px}
-    .card{
-      background:rgba(18,26,51,.9);border:1px solid var(--border);border-radius:16px;
-      padding:14px;box-shadow:0 12px 40px rgba(0,0,0,.25)
+    .header{position:sticky;top:0;background:#0b1020;border-bottom:1px solid var(--border);z-index:10}
+    .header-inner{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;gap:10px}
+    .brand{font-weight:900}
+    .container{max-width:1100px;margin:0 auto;padding:16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
+    label{font-size:13px;color:var(--muted)}
+    input,select,textarea,button{
+      width:100%;padding:10px;border-radius:10px;
+      border:1px solid var(--border);background:#0b1020;color:var(--text)
     }
-    hr.sep{border:0;border-top:1px solid var(--border);margin:14px 0}
-    .row{display:flex;gap:12px;flex-wrap:wrap}
-    .col{flex:1;min-width:240px}
-    label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px}
-    input, textarea, select, button {
-      width:100%;
-      padding:12px 14px;
-      font-size:14px;
-      background:rgba(0,0,0,.25);
-      color:var(--text);
-      border:1px solid var(--border);
-      border-radius:14px;
-      outline:none;
-    }
-    textarea{min-height:140px;resize:vertical}
-    .btn{
-      width:auto;
-      padding:10px 14px;border-radius:12px;border:1px solid var(--border);
-      background:rgba(255,255,255,.06);color:var(--text);cursor:pointer;
-      font-weight:700;
-    }
-    .btn:hover{background:rgba(255,255,255,.10)}
-    .btn.primary{
-      background: linear-gradient(180deg, #4c7dff, #3c68e0);
-      border: none;color:#fff;box-shadow: 0 6px 18px rgba(76,125,255,.25);
-    }
-    .btn.primary:hover{ background: linear-gradient(180deg, #5a88ff, #4c7dff); }
-    .btn.danger{
-      background: rgba(255,76,106,.08);
-      border: 1px solid rgba(255,76,106,.35);
-      color: #ff8fa3;
-    }
-    .btn.danger:hover{background: rgba(255,76,106,.14); color:#ffd1da;}
-    .btn:disabled{opacity:.5;cursor:not-allowed}
-    .badge{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--muted)}
-    .panel{background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:16px;padding:14px}
-    .searchbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .searchbar input{flex:1;min-width:220px}
+    textarea{min-height:120px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .row1{display:grid;grid-template-columns:1fr;gap:12px}
+    .btn{cursor:pointer;font-weight:700}
+    .btn.primary{background:#4c7dff;border:none}
+    .btn.danger{background:#ff4c6a;border:none}
+    .btn:disabled{opacity:.5}
+    .top-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .badge{font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:999px}
     .suggestions{
-      position:absolute;left:0;right:0;top:calc(100% + 8px);
-      border:1px solid var(--border);border-radius:14px;background:rgba(0,0,0,.92);
-      display:none;z-index:9999;max-height:280px;overflow:auto;box-shadow:0 18px 45px rgba(0,0,0,.45);
+      position:absolute;left:0;right:0;background:#0b1020;border:1px solid var(--border);
+      border-radius:10px;max-height:250px;overflow:auto;display:none;z-index:20
     }
-    .suggestions .item{
-      padding:10px 12px;cursor:pointer;display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--border);
-    }
-    .suggestions .item:first-child{border-top:none}
-    .suggestions .item:hover{background:rgba(255,255,255,.06)}
-    .muted{color:var(--muted)}
-    .toast-container{
-      position: fixed;top: 16px;left: 50%;transform: translateX(-50%);
-      z-index: 99999;display:flex;flex-direction:column;gap:10px;pointer-events:none;
-    }
+    .suggestions .item{padding:8px;border-top:1px solid var(--border);cursor:pointer}
+    .suggestions .item:hover{background:#121a33}
     .toast{
-      pointer-events:auto;
-      background: rgba(18,26,51,.95);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 12px 14px;
-      min-width: 260px;
-      max-width: 360px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.35);
-      font-size: 14px;
-      white-space: pre-line;
+      position:fixed;top:16px;left:50%;transform:translateX(-50%);
+      background:#121a33;border:1px solid var(--border);
+      border-radius:10px;padding:10px 14px;z-index:9999
     }
-    .toast.success{border-left:4px solid var(--ok)}
-    .toast.error{border-left:4px solid var(--danger)}
-    .toast.info{border-left:4px solid var(--accent)}
-    .top-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .authbox{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .avatar{
-      width:34px;height:34px;border-radius:999px;border:1px solid var(--border);
-      display:inline-flex;align-items:center;justify-content:center;
-      background:rgba(255,255,255,.06);
-      font-weight:900;
-    }
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    @media (max-width: 980px){ .grid2{grid-template-columns:1fr} }
-    :root{ color-scheme: dark; }
   </style>
 
-  <!-- ✅ Supabase UMD correcto (NO lo dividas, NO lo mezcles) -->
+  <!-- ✅ Supabase UMD correcto -->
   <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 
 <body>
-  <div class="toast-container" id="toastContainer"></div>
 
-  <div class="header">
-    <div class="header-inner">
-      <div class="brand">
-        <div class="title">IPUC · Miembros</div>
-        <div class="small">PWA · Búsqueda + Registro</div>
-      </div>
-
-      <div class="authbox">
-        <span class="badge" id="authBadge">Sin sesión</span>
-        <div class="avatar" id="avatar" title="Cuenta">G</div>
-        <button class="btn" id="btnLogin" type="button">Iniciar sesión</button>
-        <button class="btn danger" id="btnLogout" type="button" style="display:none;">Cerrar sesión</button>
-      </div>
+<div class="header">
+  <div class="header-inner">
+    <div class="brand">IPUC · Miembros</div>
+    <div>
+      <span class="badge" id="authBadge">Sin sesión</span>
+      <button class="btn" id="btnLogin">Iniciar sesión</button>
+      <button class="btn danger" id="btnLogout" style="display:none">Cerrar</button>
     </div>
   </div>
+</div>
 
-  <div class="container">
-    <div class="card">
+<div class="container">
+  <div class="card">
 
-      <div class="row" style="align-items:center;justify-content:space-between;">
-        <div>
-          <h3 style="margin:0;">Módulo: Miembros</h3>
-          <div class="small">Selecciona desde la búsqueda para ver/editar. Nuevo para crear.</div>
-        </div>
-
-        <div class="top-actions">
-          <button class="btn" id="btnNew" type="button">+ Nuevo</button>
-          <button class="btn primary" id="btnSave" type="button">Guardar</button>
-          <button class="btn danger" id="btnDelete" type="button">Eliminar</button>
-        </div>
-      </div>
-
-      <hr class="sep" />
-
-      <div class="panel" style="position:relative;">
-        <label>Buscador (Nombre/Apellido o Identificación)</label>
-        <div class="searchbar">
-          <input id="searchBox" placeholder="Ej: Juan Pérez o 123456789" />
-          <button class="btn primary" id="btnSearch" type="button">Buscar</button>
-          <button class="btn" id="btnClearSearch" type="button">Limpiar</button>
-        </div>
-        <div class="suggestions" id="suggestions"></div>
-        <div class="hint small muted" style="margin-top:10px;">
-          * Solo usuarios autorizados pueden guardar/eliminar. El resto puede ver.
-        </div>
-      </div>
-
-      <hr class="sep" />
-
-      <div class="panel">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-          <div class="badge" id="statusBadge">Listo</div>
-          <div class="badge">ID seleccionado: <b id="selectedIdLabel">—</b></div>
-        </div>
-
-        <hr class="sep" />
-
-        <div class="grid2">
-          <div>
-            <label>Nombres *</label>
-            <input id="first_names" />
-          </div>
-          <div>
-            <label>Apellidos *</label>
-            <input id="last_names" />
-          </div>
-        </div>
-
-        <div class="grid2" style="margin-top:10px;">
-          <div>
-            <label>Identificación *</label>
-            <input id="identification" />
-          </div>
-          <div>
-            <label>Edad *</label>
-            <input id="age" type="number" min="0" />
-          </div>
-        </div>
-
-        <div class="grid2" style="margin-top:10px;">
-          <div>
-            <label>Género *</label>
-            <select id="gender">
-              <option value="">-- Seleccionar --</option>
-              <option value="Masculino">Masculino</option>
-              <option value="Femenino">Femenino</option>
-            </select>
-          </div>
-          <div>
-            <label>Cargo en la iglesia</label>
-            <input id="church_role" />
-          </div>
-        </div>
-
-        <div class="grid2" style="margin-top:10px;">
-          <div>
-            <label>Dirección</label>
-            <input id="address" />
-          </div>
-          <div>
-            <label>Ciudad</label>
-            <input id="city" />
-          </div>
-        </div>
-
-        <div class="grid2" style="margin-top:10px;">
-          <div>
-            <label>Fecha de nacimiento</label>
-            <input id="birth_date" type="date" />
-          </div>
-          <div>
-            <label>Simpatizante</label>
-            <select id="is_sympathizer">
-              <option value="false">No</option>
-              <option value="true">Sí</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="margin-top:10px;">
-          <label>Observaciones</label>
-          <textarea id="observations" placeholder="Notas adicionales..."></textarea>
-        </div>
-      </div>
-
+    <div class="top-actions">
+      <button class="btn" id="btnNew">Nuevo</button>
+      <button class="btn primary" id="btnSave">Guardar</button>
+      <button class="btn danger" id="btnDelete">Eliminar</button>
     </div>
+
+    <hr>
+
+    <div style="position:relative">
+      <label>Buscar miembro</label>
+      <input id="searchBox" placeholder="Nombre, apellido o documento">
+      <div class="suggestions" id="suggestions"></div>
+    </div>
+
+    <hr>
+
+    <div class="row">
+      <div>
+        <label>Nombres</label>
+        <input id="first_names">
+      </div>
+      <div>
+        <label>Apellidos</label>
+        <input id="last_names">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Documento</label>
+        <input id="identification">
+      </div>
+      <div>
+        <label>Edad</label>
+        <input id="age" type="number">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Género</label>
+        <select id="gender">
+          <option value="">--</option>
+          <option>Masculino</option>
+          <option>Femenino</option>
+        </select>
+      </div>
+      <div>
+        <label>Ciudad</label>
+        <input id="city">
+      </div>
+    </div>
+
+    <div class="row1">
+      <label>Observaciones</label>
+      <textarea id="observations"></textarea>
+    </div>
+
   </div>
+</div>
 
-  <script>
-    // ========= helpers UI =========
-    const $ = (id) => document.getElementById(id);
+<script>
+  const toast = (m) => {
+    const t=document.createElement("div");
+    t.className="toast"; t.textContent=m;
+    document.body.appendChild(t);
+    setTimeout(()=>t.remove(),3000);
+  };
 
-    function toast(msg, type="info", ms=4000){
-      const c = $("toastContainer");
-      const node = document.createElement("div");
-      node.className = "toast " + type;
-      node.textContent = msg;
-      c.appendChild(node);
-      setTimeout(() => { try{ node.remove(); }catch{} }, ms);
+  const $ = (id)=>document.getElementById(id);
+
+  // 🔑 Supabase
+  const supabase = window.supabase.createClient(
+    "https://ggznwqocjvfawjmbtzda.supabase.co",
+    "sb_publishable_sXfYr31mrDcwkgPDY9pWsQ_C6x1yRhc"
+  );
+
+  let selectedId=null;
+  let allowed=false;
+
+  const blank=()=>({
+    first_names:"",last_names:"",identification:"",
+    age:null,gender:null,city:null,observations:null
+  });
+
+  let draft=blank();
+
+  const fill=(m)=>{
+    $("first_names").value=m.first_names||"";
+    $("last_names").value=m.last_names||"";
+    $("identification").value=m.identification||"";
+    $("age").value=m.age||"";
+    $("gender").value=m.gender||"";
+    $("city").value=m.city||"";
+    $("observations").value=m.observations||"";
+  };
+
+  const read=()=>({
+    first_names:$("first_names").value.trim(),
+    last_names:$("last_names").value.trim(),
+    identification:$("identification").value.trim(),
+    age:Number($("age").value)||null,
+    gender:$("gender").value||null,
+    city:$("city").value||null,
+    observations:$("observations").value||null
+  });
+
+  // 🔐 AUTH
+  async function refresh(){
+    const {data}=await supabase.auth.getSession();
+    const user=data.session?.user||null;
+    $("authBadge").textContent=user?user.email:"Sin sesión";
+    $("btnLogin").style.display=user?"none":"";
+    $("btnLogout").style.display=user?"":"none";
+    allowed=false;
+    if(user){
+      const {data:a}=await supabase.from("allowed_emails")
+        .select("email").eq("email",user.email.toLowerCase()).maybeSingle();
+      allowed=!!a;
+      if(!allowed) toast("Solo lectura (no autorizado)");
     }
+  }
 
-    // ✅ Si esto NO aparece, el script no se está ejecutando (cache o HTML roto)
-    toast("✅ JS cargó (index.html ejecutando)", "success", 2500);
+  $("btnLogin").onclick=()=>supabase.auth.signInWithOAuth({
+    provider:"google",
+    options:{redirectTo:location.origin+location.pathname}
+  });
 
-    window.addEventListener("error", (e) => {
-      const msg = e?.message || e?.error?.message || "Error JS";
-      toast("❌ JS: " + msg, "error", 9000);
-      console.log(e);
-    });
+  $("btnLogout").onclick=async()=>{
+    await supabase.auth.signOut();
+    refresh();
+  };
 
-    window.addEventListener("unhandledrejection", (e) => {
-      toast("❌ Promise: " + (e?.reason?.message || String(e?.reason||e)), "error", 9000);
-      console.log(e);
-    });
+  supabase.auth.onAuthStateChange(refresh);
+  refresh();
 
-    // ========= Supabase init =========
-    const SUPABASE_URL = "https://ggznwqocjvfawjmbtzda.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_sXfYr31mrDcwkgPDY9pWsQ_C6x1yRhc";
-
-    if (!window.supabase?.createClient){
-      toast("❌ No cargó supabase.js (script UMD). Revisa el <script src> en <head>.", "error", 12000);
-      throw new Error("Supabase UMD no disponible");
-    }
-
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    toast("✅ Supabase OK", "success", 2500);
-
-    // ========= state =========
-    const state = {
-      user: null,
-      allowed: false,
-      selectedId: null,
-      memberDraft: blankMember()
-    };
-
-    function blankMember(){
-      return {
-        first_names: "",
-        last_names: "",
-        identification: "",
-        age: "",
-        gender: "",
-        church_role: "",
-        address: "",
-        city: "",
-        birth_date: "",
-        is_sympathizer: false,
-        observations: ""
+  // 🔎 SEARCH
+  $("searchBox").oninput=async()=>{
+    const q=$("searchBox").value.trim();
+    if(q.length<2){$("suggestions").style.display="none";return;}
+    const {data}=await supabase.from("members")
+      .select("*")
+      .or(`first_names.ilike.%${q}%,last_names.ilike.%${q}%,identification.ilike.%${q}%`)
+      .limit(10);
+    const box=$("suggestions"); box.innerHTML="";
+    data.forEach(m=>{
+      const d=document.createElement("div");
+      d.className="item";
+      d.textContent=`${m.first_names} ${m.last_names} (${m.identification})`;
+      d.onmousedown=()=>{
+        draft={...m}; selectedId=m.id; fill(draft);
+        box.style.display="none";
       };
-    }
-
-    function setStatus(t){ $("statusBadge").textContent = t; }
-
-    function setSelectedId(id){
-      state.selectedId = id || null;
-      $("selectedIdLabel").textContent = state.selectedId ? String(state.selectedId) : "—";
-    }
-
-    function fillForm(m){
-      $("first_names").value = m.first_names || "";
-      $("last_names").value = m.last_names || "";
-      $("identification").value = m.identification || "";
-      $("age").value = (m.age ?? "") === null ? "" : (m.age ?? "");
-      $("gender").value = m.gender || "";
-      $("church_role").value = m.church_role || "";
-      $("address").value = m.address || "";
-      $("city").value = m.city || "";
-      $("birth_date").value = m.birth_date || "";
-      $("is_sympathizer").value = String(!!m.is_sympathizer);
-      $("observations").value = m.observations || "";
-    }
-
-    function readForm(){
-      return {
-        first_names: $("first_names").value.trim(),
-        last_names: $("last_names").value.trim(),
-        identification: $("identification").value.trim(),
-        age: (() => {
-          const raw = ($("age").value || "").trim();
-          return raw === "" ? null : Number(raw);
-        })(),
-        gender: $("gender").value || null,
-        church_role: ($("church_role").value || "").trim() || null,
-        address: ($("address").value || "").trim() || null,
-        city: ($("city").value || "").trim() || null,
-        birth_date: $("birth_date").value || null,
-        is_sympathizer: $("is_sympathizer").value === "true",
-        observations: ($("observations").value || "").trim() || null
-      };
-    }
-
-    function setWriteEnabled(enabled){
-      $("btnSave").disabled = !enabled;
-      $("btnDelete").disabled = !enabled;
-    }
-
-    // ========= auth + allowed =========
-    function paintAuth(){
-      if (state.user){
-        $("authBadge").textContent = state.user.email || "Sesión iniciada";
-        $("btnLogin").style.display = "none";
-        $("btnLogout").style.display = "";
-        $("avatar").textContent = (state.user.email || "G")[0]?.toUpperCase() || "G";
-      } else {
-        $("authBadge").textContent = "Sin sesión";
-        $("btnLogin").style.display = "";
-        $("btnLogout").style.display = "none";
-        $("avatar").textContent = "G";
-      }
-      setWriteEnabled(!!state.user && !!state.allowed);
-    }
-
-    async function checkAllowed(){
-      state.allowed = false;
-      if (!state.user?.email) return;
-
-      const email = String(state.user.email).toLowerCase();
-
-      const { data, error } = await supabase
-        .from("allowed_emails")
-        .select("email")
-        .eq("email", email)
-        .maybeSingle();
-
-      if (error) {
-        console.log("allowed_emails error:", error);
-        state.allowed = false;
-        return;
-      }
-      state.allowed = !!data?.email;
-    }
-
-    async function refreshSession(){
-      const { data } = await supabase.auth.getSession();
-      state.user = data?.session?.user || null;
-
-      if (state.user){
-        await checkAllowed();
-        if (!state.allowed){
-          toast("⚠️ Tu correo NO está autorizado para editar. Solo ver.", "info", 6000);
-        } else {
-          toast("✅ Autorizado para editar.", "success", 3000);
-        }
-      } else {
-        state.allowed = false;
-      }
-      paintAuth();
-    }
-
-    // ✅ click visible siempre
-    $("btnLogin").addEventListener("click", async () => {
-      toast("🟦 Click: Iniciar sesión", "info", 2500);
-
-      try{
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: "google",
-          options: {
-            redirectTo: window.location.origin + window.location.pathname
-          }
-        });
-        if (error) throw error;
-      } catch(e){
-        toast("❌ Login error: " + (e?.message || e), "error", 9000);
-      }
+      box.appendChild(d);
     });
+    box.style.display="block";
+  };
 
-    $("btnLogout").addEventListener("click", async () => {
-      await supabase.auth.signOut();
-      state.user = null;
-      state.allowed = false;
-      paintAuth();
-      toast("✅ Sesión cerrada.", "success", 3000);
-    });
+  // 💾 CRUD
+  $("btnNew").onclick=()=>{draft=blank();selectedId=null;fill(draft);};
 
-    supabase.auth.onAuthStateChange(async () => {
-      await refreshSession();
-    });
-
-    // ========= search =========
-    function renderSuggestions(items){
-      const box = $("suggestions");
-      if (!items || items.length === 0){
-        box.style.display = "none";
-        box.innerHTML = "";
-        return;
-      }
-      box.style.display = "block";
-      box.innerHTML = "";
-
-      items.forEach((m) => {
-        const item = document.createElement("div");
-        item.className = "item";
-        item.innerHTML = `
-          <div>
-            <div style="font-weight:800;">${(m.first_names||"")} ${(m.last_names||"")}</div>
-            <div class="small">Doc: ${(m.identification||"")} · Ciudad: ${(m.city||"")}</div>
-          </div>
-          <div class="small muted">Seleccionar</div>
-        `;
-
-        const pick = (ev) => {
-          ev.preventDefault();
-          ev.stopPropagation();
-          state.memberDraft = { ...m };
-          fillForm(state.memberDraft);
-          setSelectedId(m.id);
-          renderSuggestions([]);
-          setStatus("Cargado");
-          toast("✅ Miembro cargado.", "success", 2500);
-        };
-
-        item.addEventListener("pointerdown", pick);
-        item.addEventListener("mousedown", pick);
-
-        box.appendChild(item);
-      });
+  $("btnSave").onclick=async()=>{
+    if(!allowed){toast("No autorizado");return;}
+    const m=read();
+    if(selectedId){
+      await supabase.from("members").update(m).eq("id",selectedId);
+      toast("Actualizado");
+    }else{
+      const {data}=await supabase.from("members").insert(m).select().single();
+      selectedId=data.id;
+      toast("Guardado");
     }
+  };
 
-    $("suggestions").addEventListener("pointerdown", (e) => e.preventDefault());
-    $("suggestions").addEventListener("mousedown", (e) => e.preventDefault());
+  $("btnDelete").onclick=async()=>{
+    if(!allowed||!selectedId)return;
+    if(!confirm("¿Eliminar?"))return;
+    await supabase.from("members").delete().eq("id",selectedId);
+    draft=blank();selectedId=null;fill(draft);
+    toast("Eliminado");
+  };
+</script>
 
-    function debounce(fn, wait=350){
-      let t=null;
-      return (...args) => { clearTimeout(t); t=setTimeout(() => fn(...args), wait); };
-    }
-
-    async function searchMembers(q){
-      const query = String(q || "").trim();
-      if (!query) return [];
-      const like = `%${query}%`;
-
-      const { data, error } = await supabase
-        .from("members")
-        .select("*")
-        .or(`identification.ilike.${like},first_names.ilike.${like},last_names.ilike.${like}`)
-        .order("created_at", { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-      return data || [];
-    }
-
-    const autoSearch = debounce(async () => {
-      const q = ($("searchBox").value || "").trim();
-      if (!q || q.length < 2){ renderSuggestions([]); return; }
-      try{
-        const items = await searchMembers(q);
-        renderSuggestions(items);
-      }catch(e){
-        toast("❌ Search error: " + (e?.message || e), "error", 8000);
-      }
-    }, 300);
-
-    $("searchBox").addEventListener("input", autoSearch);
-    $("btnSearch").addEventListener("click", async () => {
-      const q = ($("searchBox").value || "").trim();
-      try{
-        const items = await searchMembers(q);
-        renderSuggestions(items);
-      }catch(e){
-        toast("❌ Error buscando: " + (e?.message || e), "error", 8000);
-      }
-    });
-    $("btnClearSearch").addEventListener("click", () => {
-      $("searchBox").value = "";
-      renderSuggestions([]);
-      $("searchBox").focus();
-    });
-
-    // ========= crud =========
-    $("btnNew").addEventListener("click", () => {
-      state.memberDraft = blankMember();
-      fillForm(state.memberDraft);
-      setSelectedId(null);
-      setStatus("Nuevo");
-      toast("🟩 Nuevo", "info", 2000);
-    });
-
-    $("btnSave").addEventListener("click", async () => {
-      try{
-        if (!state.user) { toast("⚠️ Debes iniciar sesión.", "info", 4000); return; }
-        if (!state.allowed) { toast("⛔ No autorizado para guardar.", "error", 6000); return; }
-
-        const m = readForm();
-        if (!m.first_names || !m.last_names || !m.identification){
-          toast("⚠️ Nombres, apellidos e identificación son obligatorios.", "info", 5000);
-          return;
-        }
-        const ageNum = Number(m.age);
-        if (m.age === null || !Number.isFinite(ageNum) || ageNum < 0){
-          toast("⚠️ La edad es obligatoria y válida (>=0).", "info", 5000);
-          return;
-        }
-        if (!m.gender){
-          toast("⚠️ El género es obligatorio.", "info", 5000);
-          return;
-        }
-
-        setStatus("Guardando...");
-
-        if (state.selectedId){
-          const { data, error } = await supabase
-            .from("members")
-            .update(m)
-            .eq("id", state.selectedId)
-            .select("*")
-            .single();
-          if (error) throw error;
-
-          state.memberDraft = { ...data };
-          fillForm(state.memberDraft);
-          setStatus("Guardado (actualizado)");
-          toast("✅ Guardado.", "success", 3000);
-        } else {
-          const { data, error } = await supabase
-            .from("members")
-            .insert(m)
-            .select("*")
-            .single();
-          if (error) throw error;
-
-          state.memberDraft = { ...data };
-          fillForm(state.memberDraft);
-          setSelectedId(data.id);
-          setStatus("Guardado (nuevo)");
-          toast("✅ Guardado nuevo.", "success", 3000);
-        }
-      }catch(e){
-        toast("❌ Error guardando: " + (e?.message || e), "error", 9000);
-        setStatus("Error");
-      }
-    });
-
-    $("btnDelete").addEventListener("click", async () => {
-      try{
-        if (!state.user) { toast("⚠️ Debes iniciar sesión.", "info", 4000); return; }
-        if (!state.allowed) { toast("⛔ No autorizado para eliminar.", "error", 6000); return; }
-        if (!state.selectedId) { toast("⚠️ Selecciona un miembro.", "info", 4000); return; }
-
-        const nombre = `${$("first_names").value} ${$("last_names").value}`.trim();
-        const ok = confirm(`¿Eliminar a "${nombre || "este miembro"}"?`);
-        if (!ok) return;
-
-        setStatus("Eliminando...");
-
-        const { error } = await supabase
-          .from("members")
-          .delete()
-          .eq("id", state.selectedId);
-
-        if (error) throw error;
-
-        state.memberDraft = blankMember();
-        fillForm(state.memberDraft);
-        setSelectedId(null);
-        setStatus("Eliminado");
-        toast("✅ Eliminado.", "success", 3000);
-      }catch(e){
-        toast("❌ Error eliminando: " + (e?.message || e), "error", 9000);
-        setStatus("Error");
-      }
-    });
-
-    // ========= PWA =========
-    if ("serviceWorker" in navigator){
-      window.addEventListener("load", async () => {
-        try{ await navigator.serviceWorker.register("./sw.js"); }
-        catch(e){ console.log("SW error:", e); }
-      });
-    }
-
-    // init
-    fillForm(state.memberDraft);
-    setSelectedId(null);
-    setWriteEnabled(false);
-    refreshSession();
-  </script>
 </body>
 </html>
