@@ -3,11 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <meta name="theme-color" content="#0b1020" />
-  <link rel="manifest" href="./manifest.webmanifest" />
-  <link rel="icon" href="./icons/icon-192.png" />
 
-  <title>IPUC · Miembros (PWA)</title>
+  <!-- PWA (sin sw.js, solo manifest.json como pediste) -->
+  <meta name="theme-color" content="#0b1020" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <title>IPUC · Miembros</title>
 
   <style>
     :root{
@@ -22,8 +27,18 @@
         radial-gradient(1000px 500px at 90% 30%, rgba(45,212,191,0.18), transparent 60%),
         var(--bg);
     }
-    .header{position:sticky;top:0;backdrop-filter:blur(12px);background:rgba(11,16,32,.75);border-bottom:1px solid var(--border);z-index:5}
-    .header-inner{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;gap:10px;flex-wrap:wrap}
+    :root{ color-scheme: dark; }
+
+    .header{
+      position:sticky;top:0;backdrop-filter:blur(12px);
+      background:rgba(11,16,32,.75);
+      border-bottom:1px solid var(--border);
+      z-index:5;
+    }
+    .header-inner{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:12px 16px;gap:10px;flex-wrap:wrap;
+    }
     .brand{display:flex;flex-direction:column;gap:2px}
     .brand .title{font-weight:900;letter-spacing:.2px}
     .small{font-size:12px;color:var(--muted)}
@@ -33,10 +48,11 @@
       padding:14px;box-shadow:0 12px 40px rgba(0,0,0,.25)
     }
     hr.sep{border:0;border-top:1px solid var(--border);margin:14px 0}
+
     .row{display:flex;gap:12px;flex-wrap:wrap}
-    .col{flex:1;min-width:240px}
     label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px}
-    input, textarea, select, button {
+
+    input, textarea, select{
       width:100%;
       padding:12px 14px;
       font-size:14px;
@@ -47,13 +63,16 @@
       outline:none;
     }
     textarea{min-height:140px;resize:vertical}
+
     .btn{
       width:auto;
       padding:10px 14px;border-radius:12px;border:1px solid var(--border);
       background:rgba(255,255,255,.06);color:var(--text);cursor:pointer;
       font-weight:700;
+      transition: background .15s ease, transform .05s ease;
     }
     .btn:hover{background:rgba(255,255,255,.10)}
+    .btn:active{ transform: translateY(1px); }
     .btn.primary{
       background: linear-gradient(180deg, #4c7dff, #3c68e0);
       border: none;color:#fff;box-shadow: 0 6px 18px rgba(76,125,255,.25);
@@ -66,21 +85,47 @@
     }
     .btn.danger:hover{background: rgba(255,76,106,.14); color:#ffd1da;}
     .btn:disabled{opacity:.5;cursor:not-allowed}
-    .badge{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--muted)}
-    .panel{background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:16px;padding:14px}
+
+    .badge{
+      display:inline-flex;gap:6px;align-items:center;
+      padding:6px 10px;border-radius:999px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.05);
+      color:var(--muted)
+    }
+    .panel{
+      background:rgba(0,0,0,.15);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:14px
+    }
+
     .searchbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .searchbar input{flex:1;min-width:220px}
+    .hint{font-size:12px;color:var(--muted);margin-top:10px}
+
     .suggestions{
       position:absolute;left:0;right:0;top:calc(100% + 8px);
-      border:1px solid var(--border);border-radius:14px;background:rgba(0,0,0,.92);
-      display:none;z-index:9999;max-height:280px;overflow:auto;box-shadow:0 18px 45px rgba(0,0,0,.45);
+      border:1px solid var(--border);
+      border-radius:14px;
+      background: rgba(0,0,0,.92);
+      display:none;
+      z-index:9999;
+      max-height:280px;
+      overflow:auto;
+      box-shadow:0 18px 45px rgba(0,0,0,.45);
     }
     .suggestions .item{
-      padding:10px 12px;cursor:pointer;display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--border);
+      padding:10px 12px;
+      cursor:pointer;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      border-top:1px solid var(--border);
     }
     .suggestions .item:first-child{border-top:none}
     .suggestions .item:hover{background:rgba(255,255,255,.06)}
-    .muted{color:var(--muted)}
+
     .toast-container{
       position: fixed;top: 16px;left: 50%;transform: translateX(-50%);
       z-index: 99999;display:flex;flex-direction:column;gap:10px;pointer-events:none;
@@ -95,11 +140,11 @@
       max-width: 360px;
       box-shadow: 0 10px 30px rgba(0,0,0,.35);
       font-size: 14px;
-      white-space: pre-line;
     }
     .toast.success{border-left:4px solid var(--ok)}
     .toast.error{border-left:4px solid var(--danger)}
     .toast.info{border-left:4px solid var(--accent)}
+
     .top-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .authbox{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .avatar{
@@ -108,13 +153,13 @@
       background:rgba(255,255,255,.06);
       font-weight:900;
     }
+
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     @media (max-width: 980px){ .grid2{grid-template-columns:1fr} }
-    :root{ color-scheme: dark; }
   </style>
 
-  <!-- ✅ Supabase UMD correcto (NO lo dividas, NO lo mezcles) -->
-  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <!-- ✅ SUPABASE UMD (BIEN puesto, una sola vez, sin texto raro) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 
 <body>
@@ -154,21 +199,26 @@
 
       <hr class="sep" />
 
+      <!-- Buscador -->
       <div class="panel" style="position:relative;">
         <label>Buscador (Nombre/Apellido o Identificación)</label>
+
         <div class="searchbar">
           <input id="searchBox" placeholder="Ej: Juan Pérez o 123456789" />
           <button class="btn primary" id="btnSearch" type="button">Buscar</button>
           <button class="btn" id="btnClearSearch" type="button">Limpiar</button>
         </div>
+
         <div class="suggestions" id="suggestions"></div>
-        <div class="hint small muted" style="margin-top:10px;">
+
+        <div class="hint">
           * Solo usuarios autorizados pueden guardar/eliminar. El resto puede ver.
         </div>
       </div>
 
       <hr class="sep" />
 
+      <!-- Formulario (MISMO estilo “pro”) -->
       <div class="panel">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
           <div class="badge" id="statusBadge">Listo</div>
@@ -249,10 +299,12 @@
   </div>
 
   <script>
-    // ========= helpers UI =========
+    // ======================
+    // Helpers UI
+    // ======================
     const $ = (id) => document.getElementById(id);
 
-    function toast(msg, type="info", ms=4000){
+    function toast(msg, type="info", ms=4500){
       const c = $("toastContainer");
       const node = document.createElement("div");
       node.className = "toast " + type;
@@ -261,40 +313,41 @@
       setTimeout(() => { try{ node.remove(); }catch{} }, ms);
     }
 
-    // ✅ Si esto NO aparece, el script no se está ejecutando (cache o HTML roto)
-    toast("✅ JS cargó (index.html ejecutando)", "success", 2500);
+    function setStatus(text){ $("statusBadge").textContent = text; }
 
+    function setSelectedId(id){
+      state.selectedId = id || null;
+      $("selectedIdLabel").textContent = state.selectedId ? String(state.selectedId) : "—";
+    }
+
+    // Captura errores JS visibles
     window.addEventListener("error", (e) => {
-      const msg = e?.message || e?.error?.message || "Error JS";
+      const msg = (e?.message || e?.error?.message || "Error desconocido");
       toast("❌ JS: " + msg, "error", 9000);
-      console.log(e);
+      console.log("JS ERROR:", e);
     });
-
     window.addEventListener("unhandledrejection", (e) => {
-      toast("❌ Promise: " + (e?.reason?.message || String(e?.reason||e)), "error", 9000);
-      console.log(e);
+      const msg = (e?.reason?.message || String(e?.reason || "Promise error"));
+      toast("❌ Promise: " + msg, "error", 9000);
+      console.log("UNHANDLED:", e);
     });
 
-    // ========= Supabase init =========
+    // ======================
+    // 1) Supabase
+    // ======================
     const SUPABASE_URL = "https://ggznwqocjvfawjmbtzda.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_sXfYr31mrDcwkgPDY9pWsQ_C6x1yRhc";
 
-    if (!window.supabase?.createClient){
-      toast("❌ No cargó supabase.js (script UMD). Revisa el <script src> en <head>.", "error", 12000);
-      throw new Error("Supabase UMD no disponible");
+    if (!window.supabase || !window.supabase.createClient){
+      toast("❌ No cargó Supabase. Revisa que NO haya texto raro en el <head>.", "error", 12000);
+      throw new Error("Supabase UMD no cargó: window.supabase no existe.");
     }
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    toast("✅ Supabase OK", "success", 2500);
 
-    // ========= state =========
-    const state = {
-      user: null,
-      allowed: false,
-      selectedId: null,
-      memberDraft: blankMember()
-    };
-
+    // ======================
+    // 2) Estado
+    // ======================
     function blankMember(){
       return {
         first_names: "",
@@ -311,13 +364,16 @@
       };
     }
 
-    function setStatus(t){ $("statusBadge").textContent = t; }
+    const state = {
+      user: null,
+      allowed: false,
+      selectedId: null,
+      memberDraft: blankMember()
+    };
 
-    function setSelectedId(id){
-      state.selectedId = id || null;
-      $("selectedIdLabel").textContent = state.selectedId ? String(state.selectedId) : "—";
-    }
-
+    // ======================
+    // 3) Form
+    // ======================
     function fillForm(m){
       $("first_names").value = m.first_names || "";
       $("last_names").value = m.last_names || "";
@@ -356,13 +412,15 @@
       $("btnDelete").disabled = !enabled;
     }
 
-    // ========= auth + allowed =========
+    // ======================
+    // 4) Auth + allowed_emails
+    // ======================
     function paintAuth(){
       if (state.user){
         $("authBadge").textContent = state.user.email || "Sesión iniciada";
         $("btnLogin").style.display = "none";
         $("btnLogout").style.display = "";
-        $("avatar").textContent = (state.user.email || "G")[0]?.toUpperCase() || "G";
+        $("avatar").textContent = (state.user.email || "G").trim()[0]?.toUpperCase() || "G";
       } else {
         $("authBadge").textContent = "Sin sesión";
         $("btnLogin").style.display = "";
@@ -376,7 +434,7 @@
       state.allowed = false;
       if (!state.user?.email) return;
 
-      const email = String(state.user.email).toLowerCase();
+      const email = String(state.user.email).trim().toLowerCase();
 
       const { data, error } = await supabase
         .from("allowed_emails")
@@ -386,9 +444,11 @@
 
       if (error) {
         console.log("allowed_emails error:", error);
+        // Si falla por policy, quedará solo lectura
         state.allowed = false;
         return;
       }
+
       state.allowed = !!data?.email;
     }
 
@@ -399,46 +459,56 @@
       if (state.user){
         await checkAllowed();
         if (!state.allowed){
-          toast("⚠️ Tu correo NO está autorizado para editar. Solo ver.", "info", 6000);
+          toast("⚠️ Tu correo NO está autorizado para editar. Solo podrás ver.", "info", 6000);
         } else {
-          toast("✅ Autorizado para editar.", "success", 3000);
+          toast("✅ Autorizado para editar.", "success", 2500);
         }
       } else {
         state.allowed = false;
       }
+
       paintAuth();
     }
 
-    // ✅ click visible siempre
+    // ✅ Login: redirige (normal en móvil)
     $("btnLogin").addEventListener("click", async () => {
-      toast("🟦 Click: Iniciar sesión", "info", 2500);
-
       try{
+        // Para GitHub Pages esto queda bien:
+        // ej: https://usuario.github.io/repo/
+        const redirectTo = window.location.origin + window.location.pathname;
+
+        toast("Abriendo Google...", "info", 2500);
+
         const { error } = await supabase.auth.signInWithOAuth({
           provider: "google",
-          options: {
-            redirectTo: window.location.origin + window.location.pathname
-          }
+          options: { redirectTo }
         });
+
         if (error) throw error;
       } catch(e){
-        toast("❌ Login error: " + (e?.message || e), "error", 9000);
+        toast("❌ No se pudo iniciar sesión: " + (e?.message || e), "error", 8000);
       }
     });
 
     $("btnLogout").addEventListener("click", async () => {
-      await supabase.auth.signOut();
-      state.user = null;
-      state.allowed = false;
-      paintAuth();
-      toast("✅ Sesión cerrada.", "success", 3000);
+      try{
+        await supabase.auth.signOut();
+        state.user = null;
+        state.allowed = false;
+        paintAuth();
+        toast("✅ Sesión cerrada.", "success");
+      } catch(e){
+        toast("❌ Error cerrando sesión: " + (e?.message || e), "error", 8000);
+      }
     });
 
     supabase.auth.onAuthStateChange(async () => {
       await refreshSession();
     });
 
-    // ========= search =========
+    // ======================
+    // 5) Search + Suggestions
+    // ======================
     function renderSuggestions(items){
       const box = $("suggestions");
       if (!items || items.length === 0){
@@ -457,38 +527,46 @@
             <div style="font-weight:800;">${(m.first_names||"")} ${(m.last_names||"")}</div>
             <div class="small">Doc: ${(m.identification||"")} · Ciudad: ${(m.city||"")}</div>
           </div>
-          <div class="small muted">Seleccionar</div>
+          <div class="small" style="color:var(--muted)">Seleccionar</div>
         `;
 
-        const pick = (ev) => {
+        // ✅ seleccionar antes del blur (móvil/Windows)
+        const onPick = (ev) => {
           ev.preventDefault();
           ev.stopPropagation();
+
           state.memberDraft = { ...m };
           fillForm(state.memberDraft);
           setSelectedId(m.id);
+
           renderSuggestions([]);
-          setStatus("Cargado");
-          toast("✅ Miembro cargado.", "success", 2500);
+          setStatus("Cargado (seleccionado)");
+          toast("✅ Miembro cargado.", "success");
         };
 
-        item.addEventListener("pointerdown", pick);
-        item.addEventListener("mousedown", pick);
+        item.addEventListener("pointerdown", onPick);
+        item.addEventListener("mousedown", onPick);
 
         box.appendChild(item);
       });
     }
 
+    // ✅ Evita que el blur mate el click
     $("suggestions").addEventListener("pointerdown", (e) => e.preventDefault());
     $("suggestions").addEventListener("mousedown", (e) => e.preventDefault());
 
     function debounce(fn, wait=350){
       let t=null;
-      return (...args) => { clearTimeout(t); t=setTimeout(() => fn(...args), wait); };
+      return (...args) => {
+        clearTimeout(t);
+        t=setTimeout(() => fn(...args), wait);
+      };
     }
 
     async function searchMembers(q){
       const query = String(q || "").trim();
       if (!query) return [];
+
       const like = `%${query}%`;
 
       const { data, error } = await supabase
@@ -503,58 +581,80 @@
     }
 
     const autoSearch = debounce(async () => {
-      const q = ($("searchBox").value || "").trim();
-      if (!q || q.length < 2){ renderSuggestions([]); return; }
       try{
+        const q = ($("searchBox").value || "").trim();
+        if (!q || q.length < 2){
+          renderSuggestions([]);
+          return;
+        }
         const items = await searchMembers(q);
         renderSuggestions(items);
-      }catch(e){
-        toast("❌ Search error: " + (e?.message || e), "error", 8000);
+      } catch(e){
+        console.log(e);
       }
     }, 300);
 
     $("searchBox").addEventListener("input", autoSearch);
+    $("searchBox").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") $("btnSearch").click();
+      if (e.key === "Escape") renderSuggestions([]);
+    });
+    $("searchBox").addEventListener("blur", () => {
+      setTimeout(() => renderSuggestions([]), 150);
+    });
+
     $("btnSearch").addEventListener("click", async () => {
-      const q = ($("searchBox").value || "").trim();
       try{
+        const q = ($("searchBox").value || "").trim();
         const items = await searchMembers(q);
         renderSuggestions(items);
-      }catch(e){
+      } catch(e){
         toast("❌ Error buscando: " + (e?.message || e), "error", 8000);
       }
     });
+
     $("btnClearSearch").addEventListener("click", () => {
       $("searchBox").value = "";
       renderSuggestions([]);
       $("searchBox").focus();
     });
 
-    // ========= crud =========
+    // ======================
+    // 6) CRUD
+    // ======================
     $("btnNew").addEventListener("click", () => {
       state.memberDraft = blankMember();
       fillForm(state.memberDraft);
       setSelectedId(null);
       setStatus("Nuevo");
-      toast("🟩 Nuevo", "info", 2000);
+      toast("Listo para crear nuevo.", "info", 2000);
     });
 
     $("btnSave").addEventListener("click", async () => {
       try{
-        if (!state.user) { toast("⚠️ Debes iniciar sesión.", "info", 4000); return; }
-        if (!state.allowed) { toast("⛔ No autorizado para guardar.", "error", 6000); return; }
-
-        const m = readForm();
-        if (!m.first_names || !m.last_names || !m.identification){
-          toast("⚠️ Nombres, apellidos e identificación son obligatorios.", "info", 5000);
+        if (!state.user) {
+          toast("⚠️ Debes iniciar sesión.", "info");
           return;
         }
+        if (!state.allowed) {
+          toast("⛔ Tu correo NO está autorizado para guardar.", "error", 7000);
+          return;
+        }
+
+        const m = readForm();
+
+        if (!m.first_names || !m.last_names || !m.identification){
+          toast("⚠️ Nombres, apellidos e identificación son obligatorios.", "info");
+          return;
+        }
+
         const ageNum = Number(m.age);
         if (m.age === null || !Number.isFinite(ageNum) || ageNum < 0){
-          toast("⚠️ La edad es obligatoria y válida (>=0).", "info", 5000);
+          toast("⚠️ La edad es obligatoria y válida (>= 0).", "info");
           return;
         }
         if (!m.gender){
-          toast("⚠️ El género es obligatorio.", "info", 5000);
+          toast("⚠️ El género es obligatorio.", "info");
           return;
         }
 
@@ -567,40 +667,67 @@
             .eq("id", state.selectedId)
             .select("*")
             .single();
+
           if (error) throw error;
 
           state.memberDraft = { ...data };
           fillForm(state.memberDraft);
           setStatus("Guardado (actualizado)");
-          toast("✅ Guardado.", "success", 3000);
+          toast("✅ Cambios guardados.", "success");
         } else {
           const { data, error } = await supabase
             .from("members")
             .insert(m)
             .select("*")
             .single();
+
           if (error) throw error;
 
           state.memberDraft = { ...data };
           fillForm(state.memberDraft);
           setSelectedId(data.id);
           setStatus("Guardado (nuevo)");
-          toast("✅ Guardado nuevo.", "success", 3000);
+          toast("✅ Guardado correctamente.", "success");
         }
-      }catch(e){
-        toast("❌ Error guardando: " + (e?.message || e), "error", 9000);
+      } catch(e){
+        console.log(e);
+        const msg = e?.message || String(e);
+        const raw = msg.toLowerCase();
+
+        const esDuplicado =
+          raw.includes("duplicate key") ||
+          raw.includes("unique constraint") ||
+          raw.includes("violates unique") ||
+          raw.includes("23505") ||
+          raw.includes("already exists") ||
+          raw.includes("ya existe");
+
+        if (esDuplicado){
+          toast("⚠️ Ese documento ya está registrado.", "info", 6000);
+        } else {
+          toast("❌ Error guardando: " + msg, "error", 9000);
+        }
         setStatus("Error");
       }
     });
 
     $("btnDelete").addEventListener("click", async () => {
       try{
-        if (!state.user) { toast("⚠️ Debes iniciar sesión.", "info", 4000); return; }
-        if (!state.allowed) { toast("⛔ No autorizado para eliminar.", "error", 6000); return; }
-        if (!state.selectedId) { toast("⚠️ Selecciona un miembro.", "info", 4000); return; }
+        if (!state.user) {
+          toast("⚠️ Debes iniciar sesión.", "info");
+          return;
+        }
+        if (!state.allowed) {
+          toast("⛔ Tu correo NO está autorizado para eliminar.", "error", 7000);
+          return;
+        }
+        if (!state.selectedId){
+          toast("⚠️ Selecciona un miembro primero.", "info");
+          return;
+        }
 
         const nombre = `${$("first_names").value} ${$("last_names").value}`.trim();
-        const ok = confirm(`¿Eliminar a "${nombre || "este miembro"}"?`);
+        const ok = confirm(`¿Eliminar a "${nombre || "este miembro"}"? Esta acción no se puede deshacer.`);
         if (!ok) return;
 
         setStatus("Eliminando...");
@@ -616,26 +743,21 @@
         fillForm(state.memberDraft);
         setSelectedId(null);
         setStatus("Eliminado");
-        toast("✅ Eliminado.", "success", 3000);
-      }catch(e){
+        toast("✅ Eliminado correctamente.", "success");
+      } catch(e){
         toast("❌ Error eliminando: " + (e?.message || e), "error", 9000);
         setStatus("Error");
       }
     });
-
-    // ========= PWA =========
-    if ("serviceWorker" in navigator){
-      window.addEventListener("load", async () => {
-        try{ await navigator.serviceWorker.register("./sw.js"); }
-        catch(e){ console.log("SW error:", e); }
-      });
-    }
 
     // init
     fillForm(state.memberDraft);
     setSelectedId(null);
     setWriteEnabled(false);
     refreshSession();
+
+    // Debug útil: si esto aparece, ya sabes que el JS sí está corriendo
+    console.log("IPUC PWA OK - Supabase cargó:", !!window.supabase);
   </script>
 </body>
 </html>
