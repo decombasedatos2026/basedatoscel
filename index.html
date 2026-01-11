@@ -397,9 +397,16 @@
     }
 
 async function getAuthedUser(){
-  const { data } = await supabase.auth.getSession();
-  return data?.session?.user || null;
+  // iOS/PWA a veces tarda en restaurar storage en "cold start"
+  for (let i = 0; i < 3; i++){
+    const { data } = await supabase.auth.getSession();
+    const user = data?.session?.user || null;
+    if (user) return user;
+    await new Promise(r => setTimeout(r, 250)); // 250ms
+  }
+  return null;
 }
+
 
     async function isEmailAllowed(email){
       const e = normalizeEmail(email);
@@ -1463,61 +1470,77 @@ async function getAuthedUser(){
     }
 
     // ===== Boot: handle session, allowed emails gate =====
-    async function bootstrap(){
-      // 1) Try to settle auth state
-      const user = await getAuthedUser();
-      if (!user){
-        state.auth.authed = false;
-        state.auth.email = "";
-        state.auth.photoUrl = "";
-        render();
-        return;
-      }
+async function bootstrap(maybeUser = null){
+  // 1) Toma el user que venga del evento, o intenta restaurarlo
+  const user = maybeUser || await getAuthedUser();
 
-      const email = user.email || "";
-      try{
-        const allowed = await isEmailAllowed(email);
-        if (!allowed){
-          await signOut();
-          state.auth.authed = false;
-          state.auth.email = "";
-          state.auth.photoUrl = "";
-          render();
-          mostrarAviso(
-            `El correo no tiene permiso para usar esta app:\n\n${email}`,
-            "alerta",
-            "Cuenta no autorizada"
-          );
-          return;
-        }
+  if (!user){
+    state.auth.authed = false;
+    state.auth.email = "";
+    state.auth.photoUrl = "";
+    render();
+    return;
+  }
 
-        state.auth.authed = true;
-        state.auth.email = email;
-        state.auth.photoUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || "";
-        render();
-        toast("✅ Sesión iniciada.", "success");
-      } catch(e){
-        // If policies/rls block reading allowed_emails, show a clear message
-        state.auth.authed = false;
-        state.auth.email = "";
-        state.auth.photoUrl = "";
-        render();
-        mostrarAviso(
-          "No se pudo verificar el permiso del correo.\n\n" +
-          "Revisa las Policies (RLS) de la tabla allowed_emails para permitir SELECT a usuarios autenticados (o usa una función RPC).\n\n" +
-          (e?.message || e),
-          "error",
-          "Permisos"
-        );
-      }
+  const email = user.email || "";
+  try{
+    const allowed = await isEmailAllowed(email);
+    if (!allowed){
+      await signOut();
+      state.auth.authed = false;
+      state.auth.email = "";
+      state.auth.photoUrl = "";
+      render();
+      mostrarAviso(
+        `El correo no tiene permiso para usar esta app:\n\n${email}`,
+        "alerta",
+        "Cuenta no autorizada"
+      );
+      return;
     }
 
-    // Refresh on auth changes
-    supabase.auth.onAuthStateChange(async () => { await bootstrap(); });
-
-    // Initial render
+    state.auth.authed = true;
+    state.auth.email = email;
+    state.auth.photoUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || "";
     render();
-    bootstrap();
+    // OJO: esto se va a disparar también en INITIAL_SESSION, si no quieres toast al abrir:
+    // toast("✅ Sesión iniciada.", "success");
+  } catch(e){
+    state.auth.authed = false;
+    state.auth.email = "";
+    state.auth.photoUrl = "";
+    render();
+    mostrarAviso(
+      "No se pudo verificar el permiso del correo.\n\n" +
+      "Revisa las Policies (RLS) de la tabla allowed_emails para permitir SELECT a usuarios autenticados (o usa una función RPC).\n\n" +
+      (e?.message || e),
+      "error",
+      "Permisos"
+    );
+  }
+}
+
+
+ // 1) Render inicial (UI base)
+render();
+
+// 2) Auth state: aquí Supabase entrega la sesión ya restaurada (clave para iOS)
+supabase.auth.onAuthStateChange(async (event, session) => {
+  // Cuando la app abre "en frío", el evento INITIAL_SESSION es el que importa
+  if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+    await bootstrap(session?.user || null);
+  }
+  if (event === "SIGNED_OUT") {
+    state.auth.authed = false;
+    state.auth.email = "";
+    state.auth.photoUrl = "";
+    render();
+  }
+});
+
+// 3) Bootstrap inicial con retry (por si onAuthStateChange tarda)
+bootstrap(null);
+
   </script>
 </body>
 </html>
