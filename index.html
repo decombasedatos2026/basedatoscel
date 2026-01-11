@@ -3,26 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-
   <title>IPUC · Miembros (PWA)</title>
 
-  <!-- === PWA y Iconos para Android e iOS === -->
-  <link rel="manifest" href="manifest.json">
-
-  <!-- Iconos para Android (Chrome) -->
-  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
-
-  <!-- Meta tags para iOS (Safari) -->
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="IPUC Miembros">
-
-  <!-- Tema color para barra de estado -->
+  <!-- PWA -->
+  <link rel="manifest" href="/basedatoscel/manifest.json" />
   <meta name="theme-color" content="#0b1020" />
 
+  <!-- Iconos -->
+  <link rel="icon" type="image/png" sizes="192x192" href="/basedatoscel/icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/basedatoscel/icons/icon-512.png" />
+  <link rel="apple-touch-icon" href="/basedatoscel/icons/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="IPUC Miembros" />
+
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 
 
   <style>
@@ -292,13 +287,15 @@
 
   <script type="module">
 
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/basedatoscel/sw.js", { scope: "/basedatoscel/" })
-        .catch(console.log);
-    });
-  }
-
+ if ("serviceWorker" in navigator) {
+      window.addEventListener("load", async () => {
+        try {
+          await navigator.serviceWorker.register("/basedatoscel/sw.js", { scope: "/basedatoscel/" });
+        } catch (e) {
+          console.log("SW register error:", e);
+        }
+      });
+    }
     
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
