@@ -291,6 +291,15 @@
   <div id="app"></div>
 
   <script type="module">
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/basedatoscel/sw.js", { scope: "/basedatoscel/" })
+        .catch(console.log);
+    });
+  }
+
+    
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
     // ✅ MISMAS credenciales que tu app (publishable)
