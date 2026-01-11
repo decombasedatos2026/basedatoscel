@@ -329,6 +329,17 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   },
 });
 
+// ✅ Cliente ANON solo para Storage (evita que el upload use el JWT del usuario)
+const supabaseStorage = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+    storageKey: "sb_ipuc_storage_anon" // clave distinta para que NO lea la sesión del usuario
+  }
+});
+
+    
 
 // ✅ Precalentar sesión antes del primer render (clave en PWA/iOS)
 await supabase.auth.getSession();
@@ -391,16 +402,6 @@ await supabase.auth.getSession();
 
     function normalizeEmail(email){ return String(email||"").trim().toLowerCase(); }
 
-    // ✅ Timeout helper: evita "se queda guardando..."
-function withTimeout(promise, ms, label = "Operación"){
-  let t;
-  const timeout = new Promise((_, reject) => {
-    t = setTimeout(() => reject(new Error(`${label} excedió ${ms/1000}s. Revisa tu conexión e intenta de nuevo.`)), ms);
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(t));
-}
-
-
     // ===== AUTH (Google via Supabase) =====
  async function signInGoogle(){
   const base = window.location.href.split("#")[0].split("?")[0].replace(/[^/]*$/, "");
@@ -454,16 +455,14 @@ async function getAuthedUser(){
       const fileName = `${prefix}_${Date.now()}_${safeName(file.name)}`;
       const storagePath = `${prefix}/${fileName}.${ext}`;
 
-      const { error: upErr } = await withTimeout(
-  supabase.storage.from(bucket).upload(storagePath, file, { upsert:true }),
-  45000,
-  "Subida de archivo"
-);
+const { error: upErr } = await supabaseStorage.storage
+  .from(bucket)
+  .upload(storagePath, file, { upsert:true, contentType: file.type || "application/octet-stream" });
 
-      if (upErr) throw new Error("Upload error: " + upErr.message);
+if (upErr) throw new Error("Upload error: " + upErr.message);
 
-      const { data } = supabase.storage.from(bucket).getPublicUrl(storagePath);
-      return { path: storagePath, url: data?.publicUrl || null };
+const { data } = supabaseStorage.storage.from(bucket).getPublicUrl(storagePath);
+return { path: storagePath, url: data?.publicUrl || null };
     }
 
     // ===== Members API (misma lógica que tu preload) =====
@@ -539,12 +538,7 @@ async function getAuthedUser(){
         id_document_url: doc.url,
       };
 
-   const { data, error } = await withTimeout(
-  supabase.from("members").insert(payload).select("*").single(),
-  30000,
-  "Guardar miembro"
-);
-
+      const { data, error } = await supabase.from("members").insert(payload).select("*").single();
       if (error) throw new Error(error.message);
       return data;
     }
@@ -589,12 +583,7 @@ async function getAuthedUser(){
         id_document_url: doc.url,
       };
 
-     const { data, error } = await withTimeout(
-  supabase.from("members").update(payload).eq("id", id).select("*").single(),
-  30000,
-  "Actualizar miembro"
-);
-
+      const { data, error } = await supabase.from("members").update(payload).eq("id", id).select("*").single();
       if (error) throw new Error(error.message);
       return data;
     }
@@ -1382,104 +1371,72 @@ async function getAuthedUser(){
         }
       });
 
-    let savingNow = false;
+      $("#btnSave").addEventListener("click", async ()=>{
+        try{
+          const m = readForm();
 
-$("#btnSave").addEventListener("click", async ()=>{
-  if (savingNow) return;               // ✅ evita doble click mientras guarda
-  savingNow = true;
+          if (!m.first_names || !m.last_names || !m.identification){
+            toast("Nombres, apellidos e identificación son obligatorios.", "info");
+            return;
+          }
 
-  const btnSave = $("#btnSave");
-  const btnNew = $("#btnNew");
-  const btnEdit = $("#btnEdit");
-  const btnDelete = $("#btnDelete");
+          const ageNum = Number(m.age);
+          if (m.age === null || !Number.isFinite(ageNum) || ageNum < 0){
+            toast("La edad es obligatoria y debe ser un número válido (>= 0).", "info");
+            return;
+          }
 
-  // ✅ deshabilita botones mientras guarda
-  if (btnSave) btnSave.disabled = true;
-  if (btnNew) btnNew.disabled = true;
-  if (btnEdit) btnEdit.disabled = true;
-  if (btnDelete) btnDelete.disabled = true;
+          if (!m.gender){
+            toast("El género es obligatorio. Selecciona Masculino o Femenino.", "info");
+            return;
+          }
 
-  try{
-    const m = readForm();
+          const photoFile = state.memberDraft.photo_file || null;
+          const docFile = state.memberDraft.id_document_file || null;
 
-    if (!m.first_names || !m.last_names || !m.identification){
-      toast("Nombres, apellidos e identificación son obligatorios.", "info");
-      return;
-    }
+          $("#statusBadge").textContent = "Guardando...";
 
-    const ageNum = Number(m.age);
-    if (m.age === null || !Number.isFinite(ageNum) || ageNum < 0){
-      toast("La edad es obligatoria y debe ser un número válido (>= 0).", "info");
-      return;
-    }
+          if (state.selectedId){
+            await updateMember(state.selectedId, m, photoFile, docFile);
+            toast("✅ Cambios guardados correctamente.", "success");
+          } else {
+            await saveMember(m, photoFile, docFile);
+            toast("✅ Guardado correctamente.", "success");
+          }
 
-    if (!m.gender){
-      toast("El género es obligatorio. Selecciona Masculino o Femenino.", "info");
-      return;
-    }
+          $("#statusBadge").textContent = "Guardado";
 
-    const photoFile = state.memberDraft.photo_file || null;
-    const docFile = state.memberDraft.id_document_file || null;
+          setTimeout(()=>{
+            state.memberDraft = blankMember();
+            state.selectedId = null;
+            state.viewMode = "edit";
 
-    $("#statusBadge").textContent = docFile ? "Subiendo documento..." : "Guardando...";
+            const sb = $("#searchBox");
+            if (sb) sb.value = "";
+            renderSuggestions([]);
+            updateMemberCount();
 
-    // ✅ timeout global por si algo se queda colgado
-    await withTimeout(
-      (async ()=>{
-        if (state.selectedId){
-          await updateMember(state.selectedId, m, photoFile, docFile);
-          toast("✅ Cambios guardados correctamente.", "success");
-        } else {
-          await saveMember(m, photoFile, docFile);
-          toast("✅ Guardado correctamente.", "success");
+            render();
+          }, 600);
+
+        } catch(err){
+          $("#statusBadge").textContent = "Error";
+          const raw = String(err?.message || err || "").toLowerCase();
+          const esDuplicado =
+            raw.includes("duplicate key") ||
+            raw.includes("unique constraint") ||
+            raw.includes("violates unique") ||
+            raw.includes("23505") ||
+            raw.includes("already exists") ||
+            raw.includes("ya existe");
+
+          if (esDuplicado){
+            mostrarAviso("⚠️ Ese documento de identificación ya está registrado. Revisa la búsqueda.", "alerta", "Documento duplicado");
+          } else {
+            mostrarAviso("❌ Error guardando: " + (err?.message || err), "error", "Guardar");
+          }
         }
-      })(),
-      60000,
-      "Proceso de guardado"
-    );
-
-    $("#statusBadge").textContent = "Guardado";
-
-    setTimeout(()=>{
-      state.memberDraft = blankMember();
-      state.selectedId = null;
-      state.viewMode = "edit";
-
-      const sb = $("#searchBox");
-      if (sb) sb.value = "";
-      renderSuggestions([]);
-      updateMemberCount();
-
-      render();
-    }, 600);
-
-  } catch(err){
-    $("#statusBadge").textContent = "Error";
-
-    const raw = String(err?.message || err || "").toLowerCase();
-    const esDuplicado =
-      raw.includes("duplicate key") ||
-      raw.includes("unique constraint") ||
-      raw.includes("violates unique") ||
-      raw.includes("23505") ||
-      raw.includes("already exists") ||
-      raw.includes("ya existe");
-
-    if (esDuplicado){
-      mostrarAviso("⚠️ Ese documento de identificación ya está registrado. Revisa la búsqueda.", "alerta", "Documento duplicado");
-    } else {
-      mostrarAviso("❌ Error guardando: " + (err?.message || err), "error", "Guardar");
-    }
-  } finally {
-    // ✅ siempre desbloquea (aunque se haya colgado o dado error)
-    savingNow = false;
-    if (btnSave) btnSave.disabled = !state.auth.authed;
-    if (btnNew) btnNew.disabled = false;
-    if (btnEdit) btnEdit.disabled = !state.auth.authed;
-    if (btnDelete) btnDelete.disabled = !state.auth.authed;
-  }
-});
-
+      });
 
       $("#btnSearch").addEventListener("click", async ()=>{
         try{
