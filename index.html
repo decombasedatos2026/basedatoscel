@@ -305,7 +305,15 @@
     // ✅ MISMAS credenciales que tu app (publishable)
     const SUPABASE_URL = "https://ggznwqocjvfawjmbtzda.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_sXfYr31mrDcwkgPDY9pWsQ_C6x1yRhc";
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,          // <- guarda sesión
+    autoRefreshToken: true,        // <- refresca tokens
+    detectSessionInUrl: true,      // <- captura sesión al volver de Google
+    storage: window.localStorage,  // <- fuerza localStorage (clave en iOS/PWA)
+  },
+});
+
 
     const app = document.getElementById("app");
 
@@ -388,10 +396,10 @@
       await supabase.auth.signOut();
     }
 
-    async function getAuthedUser(){
-      const { data } = await supabase.auth.getUser();
-      return data?.user || null;
-    }
+async function getAuthedUser(){
+  const { data } = await supabase.auth.getSession();
+  return data?.session?.user || null;
+}
 
     async function isEmailAllowed(email){
       const e = normalizeEmail(email);
