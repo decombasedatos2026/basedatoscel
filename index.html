@@ -449,21 +449,47 @@ async function getAuthedUser(){
     // ===== Storage helpers =====
     function safeName(name){ return String(name||"").replace(/[^\w.\-]+/g,"_").slice(0,120); }
 
-    async function uploadFile(bucket, file, prefix){
-      if (!file) return { path:null, url:null };
-      const ext = (String(file.name||"").split(".").pop() || "bin").toLowerCase();
-      const fileName = `${prefix}_${Date.now()}_${safeName(file.name)}`;
-      const storagePath = `${prefix}/${fileName}.${ext}`;
+async function uploadFile(bucket, file, prefix){
+  try{
+    if (!file) return { path:null, url:null };
 
-const { error: upErr } = await supabaseStorage.storage
-  .from(bucket)
-  .upload(storagePath, file, { upsert:true, contentType: file.type || "application/octet-stream" });
+    // Nombre/route seguro
+    const ext = (String(file.name||"").split(".").pop() || "bin").toLowerCase();
+    const fileName = `${prefix}_${Date.now()}_${safeName(file.name)}`;
+    const storagePath = `${prefix}/${fileName}.${ext}`;
 
-if (upErr) throw new Error("Upload error: " + upErr.message);
+    // ✅ Upload (incluye contentType + mensaje de error detallado)
+    const { error: upErr } = await supabaseStorage.storage
+      .from(bucket)
+      .upload(storagePath, file, {
+        upsert: true,
+        contentType: file.type || "application/octet-stream",
+      });
 
-const { data } = supabaseStorage.storage.from(bucket).getPublicUrl(storagePath);
-return { path: storagePath, url: data?.publicUrl || null };
+    if (upErr){
+      throw new Error(
+        "Upload error: " + upErr.message +
+        "\nBucket: " + bucket +
+        "\nArchivo: " + (file?.name || "") +
+        "\nTipo: " + (file?.type || "sin type") +
+        "\nRuta: " + storagePath
+      );
     }
+
+    // ✅ URL pública (si el bucket es public). Si el bucket es private, esto igual devuelve url,
+    // pero no será accesible sin signed URL (eso es configuración de Supabase, no del código).
+    const { data } = supabaseStorage.storage.from(bucket).getPublicUrl(storagePath);
+
+    return { path: storagePath, url: data?.publicUrl || null };
+  } catch (e){
+    // Log para depurar desde consola del celular
+    console.log("uploadFile error:", e);
+
+    // Re-lanza para que tu UI muestre el error en mostrarAviso(...)
+    throw e;
+  }
+}
+
 
     // ===== Members API (misma lógica que tu preload) =====
     async function searchMembers(query){
