@@ -302,18 +302,36 @@
 
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
+    // ✅ Storage seguro para iOS/PWA (evita fallos de localStorage en "cold start")
+const safeStorage = {
+  getItem: (key) => {
+    try { return window.localStorage.getItem(key); } catch { return null; }
+  },
+  setItem: (key, value) => {
+    try { window.localStorage.setItem(key, value); } catch {}
+  },
+  removeItem: (key) => {
+    try { window.localStorage.removeItem(key); } catch {}
+  },
+};
+
+
     // ✅ MISMAS credenciales que tu app (publishable)
     const SUPABASE_URL = "https://ggznwqocjvfawjmbtzda.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_sXfYr31mrDcwkgPDY9pWsQ_C6x1yRhc";
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    persistSession: true,          // <- guarda sesión
-    autoRefreshToken: true,        // <- refresca tokens
-    detectSessionInUrl: true,      // <- captura sesión al volver de Google
-    storage: window.localStorage,  // <- fuerza localStorage (clave en iOS/PWA)
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: safeStorage,          // ✅ usa el storage seguro
+    storageKey: "ipuc-miembros-auth", // ✅ clave fija (evita inconsistencias)
   },
 });
 
+
+// ✅ Precalentar sesión antes del primer render (clave en PWA/iOS)
+await supabase.auth.getSession();
 
     const app = document.getElementById("app");
 
