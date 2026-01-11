@@ -366,18 +366,23 @@
     function normalizeEmail(email){ return String(email||"").trim().toLowerCase(); }
 
     // ===== AUTH (Google via Supabase) =====
-    async function signInGoogle(){
-      // Si estás en GitHub Pages, origin ya es https://TU_USUARIO.github.io
-      // Este redirect queda siempre a /index.html del repo.
-      const base = window.location.href.split("#")[0].split("?")[0].replace(/[^/]*$/, "");
-      const redirectTo = base + "index.html";
+ async function signInGoogle(){
+  const base = window.location.href.split("#")[0].split("?")[0].replace(/[^/]*$/, "");
+  const redirectTo = base + "index.html";
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo }
-      });
-      if (error) throw error;
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo,
+      queryParams: {
+        prompt: "select_account"
+      }
     }
+  });
+
+  if (error) throw error;
+}
+
 
     async function signOut(){
       await supabase.auth.signOut();
