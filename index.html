@@ -481,52 +481,106 @@ async function uploadFile(bucket, file, prefix){
   const storagePath = `${prefix}/${fileName}.${ext}`;
 
   // ✅ Documentos: subida resumible (TUS) con JWT real
-  if (bucket === "member-docs"){
-    if (!window.tus || !window.tus.Upload){
-      throw new Error("No se cargó tus-js-client (tus.min.js). Revisa el <script> de tus.");
-    }
+// ✅ Para documentos en móvil: usar subida resumible (TUS)
+if (bucket === "member-docs"){
+  if (!window.tus || !window.tus.Upload){
+    throw new Error("No se cargó tus-js-client (tus.min.js). Revisa el <script> de tus.");
+  }
 
-    // ✅ JWT real del usuario (NO anon key)
-    const { data: sdata } = await supabase.auth.getSession();
-    const accessToken = sdata?.session?.access_token;
-    if (!accessToken){
-      throw new Error("No hay sesión activa (access_token). Cierra sesión e inicia de nuevo.");
-    }
+  // ✅ JWT real del usuario (NO anon key)
+  const { data: sdata } = await supabase.auth.getSession();
+  const accessToken = sdata?.session?.access_token;
+  if (!accessToken){
+    throw new Error("No hay sesión activa (access_token). Cierra sesión e inicia de nuevo.");
+  }
 
-    await new Promise((resolve, reject) => {
-      const endpoint = `${SUPABASE_URL}/storage/v1/upload/resumable`;
+  // ✅ Asegurar que tus reciba un Blob “simple” (algunos pickers móviles dan File raro)
+  let uploadBody = file;
+  try{
+    // si esto falla, igual seguimos con `file`
+    const ab = await file.arrayBuffer();
+    uploadBody = new Blob([ab], { type: file.type || "application/octet-stream" });
+    // conserva nombre para metadata
+    uploadBody.name = file.name || "documento";
+  } catch {}
 
-      const upload = new window.tus.Upload(file, {
-        endpoint,
-        chunkSize: 4 * 1024 * 1024, // 4MB (mejor para móvil)
-        retryDelays: [0, 1000, 3000, 5000, 10000, 20000],
-        headers: {
-          authorization: `Bearer ${accessToken}`, // ✅ CORRECTO
-          apikey: SUPABASE_ANON_KEY,
-          "x-upsert": "true",
-        },
-        metadata: {
-          bucketName: bucket,
-          objectName: storagePath,
-          contentType: file.type || "application/octet-stream",
-          cacheControl: "3600",
-        },
-        onError: (error) => reject(new Error("Upload error (resumable): " + (error?.message || error))),
-        onProgress: (bytesUploaded, bytesTotal) => {
-          const pct = bytesTotal ? Math.floor((bytesUploaded / bytesTotal) * 100) : 0;
-          const badge = document.getElementById("statusBadge");
-          if (badge) badge.textContent = `Subiendo documento... ${pct}%`;
-        },
-        onSuccess: () => resolve(),
-      });
+  await new Promise((resolve, reject) => {
+    const endpoint = `${SUPABASE_URL}/storage/v1/upload/resumable`;
 
-      upload.start();
+    let lastUploaded = 0;
+    let lastProgressAt = Date.now();
+
+    // ✅ si no avanza en 25s, abortar y dar error (evita “colgado infinito”)
+    const stallMs = 25000;
+    const hardMs  = 12 * 60 * 1000; // 12 min máximo
+
+    const stallTimer = setInterval(() => {
+      const now = Date.now();
+      if ((now - lastProgressAt) > stallMs){
+        try { upload.abort(); } catch {}
+        clearInterval(stallTimer);
+        clearTimeout(hardTimer);
+        reject(new Error("La subida se quedó sin progreso (móvil). Reintenta con buena señal o Wi-Fi."));
+      }
+    }, 3000);
+
+    const hardTimer = setTimeout(() => {
+      try { upload.abort(); } catch {}
+      clearInterval(stallTimer);
+      reject(new Error("La subida tardó demasiado (timeout). Intenta de nuevo."));
+    }, hardMs);
+
+    const upload = new window.tus.Upload(uploadBody, {
+      endpoint,
+      chunkSize: 2 * 1024 * 1024, // ✅ más pequeño = más estable en móvil (2MB)
+      retryDelays: [0, 1000, 3000, 5000, 10000, 20000, 30000],
+      headers: {
+        // ✅ pon ambos por compatibilidad (algunos proxies móviles son raros)
+        Authorization: `Bearer ${accessToken}`,
+        authorization: `Bearer ${accessToken}`,
+        apikey: SUPABASE_ANON_KEY,
+        "x-upsert": "true",
+      },
+      metadata: {
+        bucketName: bucket,
+        objectName: storagePath,
+        contentType: file.type || "application/octet-stream",
+        cacheControl: "3600",
+        filename: file.name || "documento",
+      },
+
+      onError: (error) => {
+        clearInterval(stallTimer);
+        clearTimeout(hardTimer);
+        reject(new Error("Upload error (resumable): " + (error?.message || error)));
+      },
+
+      onProgress: (bytesUploaded, bytesTotal) => {
+        lastProgressAt = Date.now();
+        lastUploaded = bytesUploaded;
+
+        const pct = bytesTotal ? Math.floor((bytesUploaded / bytesTotal) * 100) : 0;
+        const badge = document.getElementById("statusBadge");
+        if (badge) badge.textContent = `Subiendo documento... ${pct}%`;
+      },
+
+      onSuccess: () => {
+        clearInterval(stallTimer);
+        clearTimeout(hardTimer);
+        resolve();
+      },
     });
 
-    // ✅ Public URL (usa el cliente normal; el bucket debe ser public si quieres URL directa)
-    const { data } = supabase.storage.from(bucket).getPublicUrl(storagePath);
-    return { path: storagePath, url: data?.publicUrl || null };
-  }
+    // ✅ Debug útil (si quieres ver en consola móvil)
+    console.log("[TUS] start", { endpoint, bucket, storagePath, size: file.size, type: file.type });
+
+    upload.start();
+  });
+
+  const { data } = supabase.storage.from(bucket).getPublicUrl(storagePath);
+  return { path: storagePath, url: data?.publicUrl || null };
+}
+
 
   // ✅ Fotos: subida normal como ya te funciona
   const { error: upErr } = await supabaseStorage.storage
