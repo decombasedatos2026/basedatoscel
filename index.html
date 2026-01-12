@@ -289,6 +289,11 @@
 
   <div id="app"></div>
 
+
+<script src="https://cdn.jsdelivr.net/npm/tus-js-client@4.1.0/dist/tus.min.js"></script>
+
+  
+
   <script type="module">
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", async () => {
@@ -466,7 +471,7 @@ async function uploadFile(bucket, file, prefix){
   if (!Number.isFinite(size) || size <= 0){
     throw new Error(
       "El archivo seleccionado parece vacío (size=0).\n" +
-      "En Android/iOS esto pasa si eliges desde Drive/Archivos con permisos restringidos.\n\n" +
+      "En Android/iOS puede pasar si eliges desde Drive/Archivos con permisos restringidos.\n\n" +
       "Solución: descárgalo al teléfono y selecciónalo desde 'Archivos' local."
     );
   }
@@ -475,27 +480,56 @@ async function uploadFile(bucket, file, prefix){
   const fileName = `${prefix}_${Date.now()}_${safeName(file.name)}`;
   const storagePath = `${prefix}/${fileName}.${ext}`;
 
-  // Leer archivo (también con timeout)
-  let bodyBlob;
-  try{
-    const ab = await withTimeout(file.arrayBuffer(), 20000, "Lectura del archivo");
-    bodyBlob = new Blob([ab], { type: file.type || "application/octet-stream" });
-  } catch (e){
-    throw new Error(
-      "No se pudo leer el archivo en el celular.\n" +
-      (e?.message || e)
-    );
+  // ✅ Para documentos en móvil: usar subida resumible (TUS)
+  if (bucket === "member-docs"){
+    if (!window.tus || !window.tus.Upload){
+      throw new Error("No se cargó tus-js-client (tus.min.js). Revisa el <script> de tus.");
+    }
+
+    await new Promise((resolve, reject) => {
+      const endpoint = `${SUPABASE_URL}/storage/v1/upload/resumable`;
+
+      const upload = new window.tus.Upload(file, {
+        endpoint,
+        chunkSize: 6 * 1024 * 1024, // 6MB chunks (estable)
+        retryDelays: [0, 1000, 3000, 5000, 10000],
+        headers: {
+          authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          apikey: SUPABASE_ANON_KEY,
+          "x-upsert": "true",
+        },
+        metadata: {
+          bucketName: bucket,
+          objectName: storagePath, // ruta dentro del bucket
+          contentType: file.type || "application/octet-stream",
+          cacheControl: "3600",
+        },
+        onError: (error) => {
+          reject(new Error("Upload error (resumable): " + (error?.message || error)));
+        },
+        onProgress: (bytesUploaded, bytesTotal) => {
+          // si quieres, puedes mostrar progreso en el badge:
+          const pct = bytesTotal ? Math.floor((bytesUploaded / bytesTotal) * 100) : 0;
+          const badge = document.getElementById("statusBadge");
+          if (badge) badge.textContent = `Subiendo documento... ${pct}%`;
+        },
+        onSuccess: () => resolve(),
+      });
+
+      upload.start();
+    });
+
+    const { data } = supabaseStorage.storage.from(bucket).getPublicUrl(storagePath);
+    return { path: storagePath, url: data?.publicUrl || null };
   }
 
-  // Subir con timeout (CLAVE para evitar que se quede colgado)
-  const { error: upErr } = await withTimeout(
-    supabaseStorage.storage.from(bucket).upload(storagePath, bodyBlob, {
+  // ✅ Para fotos (y otros buckets): subida normal (como te funciona)
+  const { error: upErr } = await supabaseStorage.storage
+    .from(bucket)
+    .upload(storagePath, file, {
       upsert: true,
       contentType: file.type || "application/octet-stream",
-    }),
-    60000,
-    "Subida del documento"
-  );
+    });
 
   if (upErr){
     throw new Error(
