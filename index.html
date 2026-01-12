@@ -87,12 +87,14 @@
     }
 
     .container{max-width:1200px;margin:0 auto;padding:20px}
-    .card{
-      background:rgba(18,26,51,.9);border:1px solid var(--border);border-radius:16px;
-      padding:16px;box-shadow:0 12px 40px rgba(0,0,0,.25);
-      max-width: 100%;
-      overflow: visible;  /* ✅ evita desbordes internos */
-    }
+.card{
+  background:rgba(18,26,51,.9);border:1px solid var(--border);border-radius:16px;
+  padding:16px;box-shadow:0 12px 40px rgba(0,0,0,.25);
+  max-width: 100%;
+  overflow-x: hidden;   /* ✅ evita scroll a la derecha */
+  overflow-y: visible;  /* ✅ NO daña cosas que se despliegan hacia abajo (sugerencias/modales) */
+}
+
     hr.sep{border:0;border-top:1px solid var(--border);margin:14px 0}
     .row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:6px;}
     .col{flex:1;min-width:220px}
@@ -333,7 +335,19 @@ input[type="file"]::-webkit-file-upload-button{
   min-width: 0;
 }
 
-    
+    /* ✅ FIX real para input file en móvil: permitir que se encoja y no empuje el layout */
+#photoFileBox{ max-width: 100%; }
+
+#photoInput{
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;      /* CLAVE: deja que el control se encoja */
+  display: block;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
   </style>
 </head>
 
