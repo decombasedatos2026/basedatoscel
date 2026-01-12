@@ -623,14 +623,22 @@ function hideLoader(){
       return list.includes(e);
     }
 
-    async function requireAuth({ silent = false } = {}){
+async function requireAuth({ silent = false } = {}){
   try{
-    // 1) Sesión REAL (token real)
-    const { data, error } = await supabase.auth.getSession();
-    if (error) throw error;
+    // ✅ Retry corto: evita falsos "sin sesión" en iOS/PWA cuando el token se está restaurando/refresh
+    let session = null;
+    let user = null;
 
-    const session = data?.session || null;
-    const user = session?.user || null;
+    for (let i = 0; i < 4; i++){
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+
+      session = data?.session || null;
+      user = session?.user || null;
+
+      if (user) break;
+      await new Promise(r => setTimeout(r, 200)); // 200ms
+    }
 
     if (!user){
       state.auth.authed = false;
@@ -648,7 +656,7 @@ function hideLoader(){
 
     const email = user.email || "";
 
-    // 2) Validación allowed_emails con cache (evita consultas repetidas)
+    // 2) Validación allowed_emails con cache
     const normalized = normalizeEmail(email);
     const cacheHit = (state.auth.allowedEmail === normalized && state.auth.allowedOk === true);
 
@@ -686,7 +694,6 @@ function hideLoader(){
     return true;
 
   } catch(e){
-    // Ante cualquier error, marca como no lista pero bloquea acciones para evitar pérdidas
     state.auth.ready = true;
     state.auth.authed = false;
     render();
@@ -696,6 +703,7 @@ function hideLoader(){
     return false;
   }
 }
+
 
 
     // ===== Storage helpers =====
@@ -1735,44 +1743,45 @@ function render(){
 
     // ===== Boot: handle session, allowed emails gate =====
 async function bootstrap(maybeUser = null){
-  // ✅ Mientras se verifica, bloquea acciones (ready=false)
+  // ✅ Mientras se verifica, bloquea acciones (ready=false) pero NO renderices todavía (evita parpadeo)
   state.auth.ready = false;
-  render();
 
-  // Si viene user (de onAuthStateChange), ok; si no, valida por getSession real
+  // ✅ Si Supabase ya nos trae un user, pintamos optimista (solo UI) para que no "desaparezca" la sesión
   if (maybeUser){
-    // Forzamos requireAuth para validar allowed y sincronizar estado
-    await requireAuth({ silent: true });
-    render();
-    return;
+    state.auth.authed = true;
+    state.auth.email = maybeUser.email || "";
+    state.auth.photoUrl = maybeUser.user_metadata?.avatar_url || maybeUser.user_metadata?.picture || "";
   }
 
-  // Caso normal: verificamos sesión real
+  // ✅ Validación real (sesión + allowed_emails)
   await requireAuth({ silent: true });
+
+  // ✅ Un solo render al final (UI estable)
   render();
 }
+
 
 
     // 1) Render inicial (UI base)
     render();
 
     // 2) Auth state: aquí Supabase entrega la sesión ya restaurada (clave para iOS)
-    supabase.auth.onAuthStateChange(async (event, session) => {
-      // Cuando la app abre "en frío", el evento INITIAL_SESSION es el que importa
-      if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-        await bootstrap(session?.user || null);
-      }
-  if (event === "SIGNED_OUT") {
-  state.auth.authed = false;
-  state.auth.ready = true;       // o false si quieres mostrar "Verificando..."
-  state.auth.email = "";
-  state.auth.photoUrl = "";
-  state.auth.allowedEmail = "";
-  state.auth.allowedOk = false;
-  render();
-}
+supabase.auth.onAuthStateChange(async (event, session) => {
+  if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+    await bootstrap(session?.user || null);
+  }
 
-    });
+  if (event === "SIGNED_OUT") {
+    state.auth.authed = false;
+    state.auth.ready = true;
+    state.auth.email = "";
+    state.auth.photoUrl = "";
+    state.auth.allowedEmail = "";
+    state.auth.allowedOk = false;
+    render();
+  }
+});
+
 
     // 3) Bootstrap inicial con retry (por si onAuthStateChange tarda)
     bootstrap(null);
