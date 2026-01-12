@@ -165,184 +165,176 @@
     return Promise.race([promise, timeout]).finally(()=> clearTimeout(t));
   }
 
-  async function uploadFile(bucket, file, prefix){
-    if (!file) return { path:null, url:null };
+ async function uploadFile(bucket, file, prefix){
+  if (!file) return { path:null, url:null };
 
-    const size = Number(file.size || 0);
-    if (!Number.isFinite(size) || size <= 0){
-      throw new Error(
-        "El archivo seleccionado parece vacío (size=0).\n" +
-        "En Android/iOS puede pasar si eliges desde Drive/Archivos con permisos restringidos.\n\n" +
-        "Solución: descárgalo al teléfono y selecciónalo desde 'Archivos' local."
-      );
-    }
+  const size = Number(file.size || 0);
+  if (!Number.isFinite(size) || size <= 0){
+    throw new Error(
+      "El archivo seleccionado parece vacío (size=0).\n" +
+      "En Android/iOS puede pasar si eliges desde Drive/Archivos con permisos restringidos.\n\n" +
+      "Solución: descárgalo al teléfono y selecciónalo desde 'Archivos' local."
+    );
+  }
 
-    const originalName = String(file.name || "archivo");
-    const ext = (originalName.includes(".") ? originalName.split(".").pop() : "bin").toLowerCase();
+  const originalName = String(file.name || "archivo");
+  const ext = (originalName.includes(".") ? originalName.split(".").pop() : "bin").toLowerCase();
 
-    // ✅ Nombre sin la extensión para no terminar en .pdf.pdf
-    const baseName = safeName(originalName).replace(/\.[^/.]+$/, "");
-    const fileName = `${prefix}_${Date.now()}_${baseName}.${ext}`;
-    const storagePath = `${prefix}/${fileName}`;
+  // ✅ Nombre sin la extensión para no terminar en .pdf.pdf
+  const baseName = safeName(originalName).replace(/\.[^/.]+$/, "");
+  const fileName = `${prefix}_${Date.now()}_${baseName}.${ext}`;
 
-    // ✅ Documentos: 1) intento normal (estable en móvil). 2) fallback TUS (pero sin PATCH real)
-    if (bucket === "member-docs"){
+  const storagePath = `${prefix}/${fileName}`;
 
-      // 1) INTENTO #1: subida normal con el cliente autenticado (supabase)
-      try{
-        const { data: sdata } = await supabase.auth.getSession();
-        const accessToken = sdata?.session?.access_token;
-        if (!accessToken){
-          throw new Error("No hay sesión activa (access_token). Cierra sesión e inicia de nuevo.");
-        }
+  // ✅ Documentos: 1) intento normal. 2) fallback TUS
+  if (bucket === "member-docs"){
 
-        const { data: upData, error: upErr } = await withTimeout(
-          supabase.storage
-            .from(bucket)
-            .upload(storagePath, file, {
-              upsert: true,
-              contentType: file.type || "application/octet-stream",
-              cacheControl: "3600",
-            }),
-          3 * 60 * 1000,
-          "Subida de documento"
-        );
-
-        if (upErr){
-          throw new Error(
-            "Upload DOC (normal) falló: " + upErr.message +
-            "\nBucket: " + bucket +
-            "\nRuta: " + storagePath +
-            "\nArchivo: " + (file?.name || "") +
-            "\nTipo: " + (file?.type || "sin type") +
-            "\nSize: " + (file?.size || 0)
-          );
-        }
-
-        const { data } = supabase.storage.from(bucket).getPublicUrl(storagePath);
-        return { path: storagePath, url: data?.publicUrl || null };
-
-      } catch(e){
-        console.log("[DOC] upload normal falló, intento TUS...", e);
-        // seguimos al fallback TUS
-      }
-
-      // 2) FALLBACK: subida resumible (TUS) evitando PATCH real (clave para móviles)
-      if (!window.tus || !window.tus.Upload){
-        throw new Error("No se cargó tus-js-client (tus.min.js). Revisa el <script> de tus.");
-      }
-
+    // 1) INTENTO #1: subida normal con el cliente autenticado (supabase)
+    try{
       const { data: sdata } = await supabase.auth.getSession();
       const accessToken = sdata?.session?.access_token;
       if (!accessToken){
         throw new Error("No hay sesión activa (access_token). Cierra sesión e inicia de nuevo.");
       }
 
-      // ✅ Asegurar Blob simple
-      let uploadBody = file;
-      try{
-        const ab = await file.arrayBuffer();
-        uploadBody = new Blob([ab], { type: file.type || "application/octet-stream" });
-        uploadBody.name = file.name || "documento";
-      } catch {}
-
-      await new Promise((resolve, reject) => {
-        const endpoint = `${SUPABASE_URL}/storage/v1/upload/resumable`;
-
-        let lastProgressAt = Date.now();
-        const stallMs = 25000;
-        const hardMs  = 12 * 60 * 1000;
-
-        let upload;
-
-        const stallTimer = setInterval(() => {
-          const now = Date.now();
-          if ((now - lastProgressAt) > stallMs){
-            try { upload?.abort(); } catch {}
-            clearInterval(stallTimer);
-            clearTimeout(hardTimer);
-            reject(new Error("La subida se quedó sin progreso (móvil). Reintenta con buena señal o Wi-Fi."));
-          }
-        }, 3000);
-
-        const hardTimer = setTimeout(() => {
-          try { upload?.abort(); } catch {}
-          clearInterval(stallTimer);
-          reject(new Error("La subida tardó demasiado (timeout). Intenta de nuevo."));
-        }, hardMs);
-
-        upload = new window.tus.Upload(uploadBody, {
-          endpoint,
-          chunkSize: 2 * 1024 * 1024,
-          retryDelays: [0, 1000, 3000, 5000, 10000, 20000, 30000],
-
-          // ✅ CLAVE: evita PATCH real (muchas redes móviles lo bloquean)
-          overridePatchMethod: true,
-
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            apikey: SUPABASE_ANON_KEY,
-            "x-upsert": "true",
-          },
-
-          metadata: {
-            bucketName: bucket,
-            objectName: storagePath,
+      // ✅ OJO: Supabase NO lanza excepción si falla, hay que revisar "error"
+      const { data: upData, error: upErr } = await withTimeout(
+        supabase.storage
+          .from(bucket)
+          .upload(storagePath, file, {
+            upsert: true,
             contentType: file.type || "application/octet-stream",
             cacheControl: "3600",
-            filename: file.name || "documento",
-          },
+          }),
+        3 * 60 * 1000,
+        "Subida de documento"
+      );
 
-          onError: (error) => {
-            clearInterval(stallTimer);
-            clearTimeout(hardTimer);
-            reject(new Error("Upload error (resumable): " + (error?.message || error)));
-          },
-
-          onProgress: (bytesUploaded, bytesTotal) => {
-            lastProgressAt = Date.now();
-            const pct = bytesTotal ? Math.floor((bytesUploaded / bytesTotal) * 100) : 0;
-            const badge = document.getElementById("statusBadge");
-            if (badge) badge.textContent = `Subiendo documento... ${pct}%`;
-          },
-
-          onSuccess: () => {
-            clearInterval(stallTimer);
-            clearTimeout(hardTimer);
-            resolve();
-          },
-        });
-
-        console.log("[TUS] start", { endpoint, bucket, storagePath, size: file.size, type: file.type });
-        upload.start();
-      });
+      if (upErr){
+        throw new Error("Upload DOC (normal) falló: " + upErr.message);
+      }
 
       const { data } = supabase.storage.from(bucket).getPublicUrl(storagePath);
       return { path: storagePath, url: data?.publicUrl || null };
+
+    } catch(e){
+      console.log("[DOC] upload normal falló, intento TUS...", e);
+      // seguimos al fallback TUS
     }
 
-    // ✅ Fotos: subida normal como ya te funciona (ANON)
-    const { error: upErr } = await supabaseStorage.storage
-      .from(bucket)
-      .upload(storagePath, file, {
-        upsert: true,
-        contentType: file.type || "application/octet-stream",
+    // 2) FALLBACK: subida resumible (TUS)
+    if (!window.tus || !window.tus.Upload){
+      throw new Error("No se cargó tus-js-client (tus.min.js). Revisa el <script> de tus.");
+    }
+
+    const { data: sdata } = await supabase.auth.getSession();
+    const accessToken = sdata?.session?.access_token;
+    if (!accessToken){
+      throw new Error("No hay sesión activa (access_token). Cierra sesión e inicia de nuevo.");
+    }
+
+    // Asegurar blob simple (mejor compatibilidad móvil)
+    let uploadBody = file;
+    try{
+      const ab = await file.arrayBuffer();
+      uploadBody = new Blob([ab], { type: file.type || "application/octet-stream" });
+      uploadBody.name = file.name || "documento";
+    } catch {}
+
+    await new Promise((resolve, reject) => {
+      const endpoint = `${SUPABASE_URL}/storage/v1/upload/resumable`;
+
+      let lastProgressAt = Date.now();
+      const stallMs = 25000;
+      const hardMs  = 12 * 60 * 1000;
+
+      let upload;
+
+      const stallTimer = setInterval(() => {
+        const now = Date.now();
+        if ((now - lastProgressAt) > stallMs){
+          try { upload?.abort(); } catch {}
+          clearInterval(stallTimer);
+          clearTimeout(hardTimer);
+          reject(new Error("La subida se quedó sin progreso (móvil). Reintenta con buena señal o Wi-Fi."));
+        }
+      }, 3000);
+
+      const hardTimer = setTimeout(() => {
+        try { upload?.abort(); } catch {}
+        clearInterval(stallTimer);
+        reject(new Error("La subida tardó demasiado (timeout). Intenta de nuevo."));
+      }, hardMs);
+
+      upload = new window.tus.Upload(uploadBody, {
+        endpoint,
+        chunkSize: 2 * 1024 * 1024,
+        retryDelays: [0, 1000, 3000, 5000, 10000, 20000, 30000],
+
+        // ✅ CLAVE para móvil: evita PATCH real (muchas redes lo bloquean)
+        overridePatchMethod: true,
+
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          apikey: SUPABASE_ANON_KEY,
+          "x-upsert": "true",
+        },
+        metadata: {
+          bucketName: bucket,
+          objectName: storagePath,
+          contentType: file.type || "application/octet-stream",
+          cacheControl: "3600",
+          filename: file.name || "documento",
+        },
+        onError: (error) => {
+          clearInterval(stallTimer);
+          clearTimeout(hardTimer);
+          reject(new Error("Upload error (resumable): " + (error?.message || error)));
+        },
+        onProgress: (bytesUploaded, bytesTotal) => {
+          lastProgressAt = Date.now();
+          const pct = bytesTotal ? Math.floor((bytesUploaded / bytesTotal) * 100) : 0;
+          const badge = document.getElementById("statusBadge");
+          if (badge) badge.textContent = `Subiendo documento... ${pct}%`;
+        },
+        onSuccess: () => {
+          clearInterval(stallTimer);
+          clearTimeout(hardTimer);
+          resolve();
+        },
       });
 
-    if (upErr){
-      throw new Error(
-        "Upload error: " + upErr.message +
-        "\nBucket: " + bucket +
-        "\nArchivo: " + (file?.name || "") +
-        "\nTipo: " + (file?.type || "sin type") +
-        "\nSize: " + size +
-        "\nRuta: " + storagePath
-      );
-    }
+      console.log("[TUS] start", { endpoint, bucket, storagePath, size: file.size, type: file.type });
+      upload.start();
+    });
 
-    const { data } = supabaseStorage.storage.from(bucket).getPublicUrl(storagePath);
+    const { data } = supabase.storage.from(bucket).getPublicUrl(storagePath);
     return { path: storagePath, url: data?.publicUrl || null };
   }
+
+  // ✅ Fotos: subida normal ANON (como ya te funciona)
+  const { error: upErr } = await supabaseStorage.storage
+    .from(bucket)
+    .upload(storagePath, file, {
+      upsert: true,
+      contentType: file.type || "application/octet-stream",
+    });
+
+  if (upErr){
+    throw new Error(
+      "Upload error: " + upErr.message +
+      "\nBucket: " + bucket +
+      "\nArchivo: " + (file?.name || "") +
+      "\nTipo: " + (file?.type || "sin type") +
+      "\nSize: " + size +
+      "\nRuta: " + storagePath
+    );
+  }
+
+  const { data } = supabaseStorage.storage.from(bucket).getPublicUrl(storagePath);
+  return { path: storagePath, url: data?.publicUrl || null };
+}
+
 
   // ===== Members API =====
   async function searchMembers(query){
