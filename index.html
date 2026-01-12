@@ -480,10 +480,17 @@ async function uploadFile(bucket, file, prefix){
   const fileName = `${prefix}_${Date.now()}_${safeName(file.name)}`;
   const storagePath = `${prefix}/${fileName}.${ext}`;
 
-  // ✅ Para documentos en móvil: usar subida resumible (TUS)
+  // ✅ Documentos: subida resumible (TUS) con JWT real
   if (bucket === "member-docs"){
     if (!window.tus || !window.tus.Upload){
       throw new Error("No se cargó tus-js-client (tus.min.js). Revisa el <script> de tus.");
+    }
+
+    // ✅ JWT real del usuario (NO anon key)
+    const { data: sdata } = await supabase.auth.getSession();
+    const accessToken = sdata?.session?.access_token;
+    if (!accessToken){
+      throw new Error("No hay sesión activa (access_token). Cierra sesión e inicia de nuevo.");
     }
 
     await new Promise((resolve, reject) => {
@@ -491,24 +498,21 @@ async function uploadFile(bucket, file, prefix){
 
       const upload = new window.tus.Upload(file, {
         endpoint,
-        chunkSize: 6 * 1024 * 1024, // 6MB chunks (estable)
-        retryDelays: [0, 1000, 3000, 5000, 10000],
+        chunkSize: 4 * 1024 * 1024, // 4MB (mejor para móvil)
+        retryDelays: [0, 1000, 3000, 5000, 10000, 20000],
         headers: {
-          authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          authorization: `Bearer ${accessToken}`, // ✅ CORRECTO
           apikey: SUPABASE_ANON_KEY,
           "x-upsert": "true",
         },
         metadata: {
           bucketName: bucket,
-          objectName: storagePath, // ruta dentro del bucket
+          objectName: storagePath,
           contentType: file.type || "application/octet-stream",
           cacheControl: "3600",
         },
-        onError: (error) => {
-          reject(new Error("Upload error (resumable): " + (error?.message || error)));
-        },
+        onError: (error) => reject(new Error("Upload error (resumable): " + (error?.message || error))),
         onProgress: (bytesUploaded, bytesTotal) => {
-          // si quieres, puedes mostrar progreso en el badge:
           const pct = bytesTotal ? Math.floor((bytesUploaded / bytesTotal) * 100) : 0;
           const badge = document.getElementById("statusBadge");
           if (badge) badge.textContent = `Subiendo documento... ${pct}%`;
@@ -519,11 +523,12 @@ async function uploadFile(bucket, file, prefix){
       upload.start();
     });
 
-    const { data } = supabaseStorage.storage.from(bucket).getPublicUrl(storagePath);
+    // ✅ Public URL (usa el cliente normal; el bucket debe ser public si quieres URL directa)
+    const { data } = supabase.storage.from(bucket).getPublicUrl(storagePath);
     return { path: storagePath, url: data?.publicUrl || null };
   }
 
-  // ✅ Para fotos (y otros buckets): subida normal (como te funciona)
+  // ✅ Fotos: subida normal como ya te funciona
   const { error: upErr } = await supabaseStorage.storage
     .from(bucket)
     .upload(storagePath, file, {
@@ -1481,13 +1486,17 @@ async function uploadFile(bucket, file, prefix){
         $("#statusBadge").textContent = docFile ? "Subiendo documento..." : "Guardando...";
 
 
-    if (state.selectedId){
-  await withTimeout(updateMember(state.selectedId, m, photoFile, docFile), 60000, "Actualizar miembro");
+const hasDoc = !!docFile;
+const TIMEOUT_MS = hasDoc ? (10 * 60 * 1000) : 60000; // ✅ 10 min si hay documento
+
+if (state.selectedId){
+  await withTimeout(updateMember(state.selectedId, m, photoFile, docFile), TIMEOUT_MS, "Actualizar miembro");
   toast("✅ Cambios guardados correctamente.", "success");
 } else {
-  await withTimeout(saveMember(m, photoFile, docFile), 60000, "Guardar miembro");
+  await withTimeout(saveMember(m, photoFile, docFile), TIMEOUT_MS, "Guardar miembro");
   toast("✅ Guardado correctamente.", "success");
 }
+
 
 
           $("#statusBadge").textContent = "Guardado";
