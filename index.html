@@ -38,7 +38,15 @@
       overflow-x: hidden; /* ✅ evita que algo estire la pantalla */
     }
 
-    .header{position:sticky;top:0;backdrop-filter:blur(12px);background:rgba(11,16,32,.75);border-bottom:1px solid var(--border);z-index:5}
+    .header{
+  position:sticky;
+  top:0;
+  backdrop-filter:blur(12px);
+  background:rgba(11,16,32,.75);
+  border-bottom:1px solid var(--border);
+  z-index: 20; /* ✅ antes era 5: ahora queda por encima del toolbar-sticky */
+}
+
     .header-inner{display:flex;align-items:center;justify-content:space-between;padding:12px 20px}
     .brand{display:flex;flex-direction:column;gap:2px}
     .brand .title{font-weight:900;letter-spacing:.2px}
