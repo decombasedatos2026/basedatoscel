@@ -6,21 +6,19 @@
   <title>IPUC · Miembros (PWA)</title>
 
   <!-- PWA -->
- <link rel="manifest" href="./manifest.json" />
+  <link rel="manifest" href="./manifest.json" />
   <meta name="theme-color" content="#0b1020" />
 
   <!-- Iconos -->
-<link rel="icon" sizes="192x192" href="./icono-192.png" />
-<link rel="icon" sizes="512x512" href="./icono-512.png" />
+  <link rel="icon" sizes="192x192" href="./icono-192.png" />
+  <link rel="icon" sizes="512x512" href="./icono-512.png" />
 
-
-    <!-- Meta tags para iOS (Safari) -->
-<link rel="apple-touch-icon" sizes="180x180" href="./apple-icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="IPUC Miembros">
-
+  <!-- Meta tags para iOS (Safari) -->
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="IPUC Miembros">
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
@@ -37,7 +35,9 @@
         radial-gradient(1200px 600px at 20% 10%, rgba(76,125,255,0.25), transparent 60%),
         radial-gradient(1000px 500px at 90% 30%, rgba(45,212,191,0.18), transparent 60%),
         var(--bg);
+      overflow-x: hidden; /* ✅ evita que algo estire la pantalla */
     }
+
     .header{position:sticky;top:0;backdrop-filter:blur(12px);background:rgba(11,16,32,.75);border-bottom:1px solid var(--border);z-index:5}
     .header-inner{display:flex;align-items:center;justify-content:space-between;padding:12px 20px}
     .brand{display:flex;flex-direction:column;gap:2px}
@@ -89,7 +89,9 @@
     .container{max-width:1200px;margin:0 auto;padding:20px}
     .card{
       background:rgba(18,26,51,.9);border:1px solid var(--border);border-radius:16px;
-      padding:16px;box-shadow:0 12px 40px rgba(0,0,0,.25)
+      padding:16px;box-shadow:0 12px 40px rgba(0,0,0,.25);
+      max-width: 100%;
+      overflow: hidden; /* ✅ evita desbordes internos */
     }
     hr.sep{border:0;border-top:1px solid var(--border);margin:14px 0}
     .row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:6px;}
@@ -105,6 +107,7 @@
       border-radius:14px;
       outline:none;
       pointer-events:auto;
+      max-width: 100%;
     }
     input::placeholder, textarea::placeholder{ color: rgba(154,164,192,.75); }
     input[type="date"]{ color-scheme: dark; }
@@ -120,8 +123,8 @@
     input[type="file"]::-webkit-file-upload-button:hover{ background: rgba(255,255,255,.12); }
 
     textarea{min-height:180px;resize:vertical}
-    .badge{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--muted)}
-    .panel{background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:16px;padding:14px}
+    .badge{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--muted);max-width:100%}
+    .panel{background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:16px;padding:14px;max-width:100%}
     .muted{color:var(--muted)}
     .hint{font-size:12px;color:var(--muted);margin-top:6px}
     .avatar{
@@ -136,9 +139,9 @@
     .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     @media (max-width: 980px){ .grid-2{grid-template-columns:1fr} }
 
-    .searchbar{display:flex;gap:10px;align-items:center;}
-    .searchbar input{padding:10px 12px;}
-    .search-actions{display:flex;gap:10px;align-items:center;}
+    .searchbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    .searchbar input{padding:10px 12px;min-width:0;}
+    .search-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
 
     .suggestions{
       position:absolute;top:calc(100% + 8px);left:0;right:0;
@@ -156,7 +159,7 @@
     }
     .suggestions .item:first-child{border-top:none}
     .suggestions .item:hover{background:rgba(255,255,255,.06)}
-    .suggestions .left{display:flex;flex-direction:column;gap:2px}
+    .suggestions .left{display:flex;flex-direction:column;gap:2px;min-width:0}
     .suggestions .right{color:var(--muted);font-size:12px;white-space:nowrap}
 
     .toast-container{
@@ -211,11 +214,12 @@
     .select{
       padding:10px 12px;border-radius:12px;border:1px solid var(--border);
       background:rgba(255,255,255,.06);color:var(--text);outline:none;cursor:pointer;
+      max-width: 100%;
     }
     .select:hover{ background:rgba(255,255,255,.10); }
     .select option{ background:#0b1020;color:var(--text); }
 
-    .count-badge{flex:0 0 auto;white-space:nowrap}
+    .count-badge{flex:0 0 auto;white-space:nowrap;max-width:100%}
     .count-number{display:inline-block;min-width:3ch;text-align:right}
 
     .auth-area{ position: relative; display:flex; align-items:center; gap:8px; }
@@ -260,6 +264,17 @@
     @media (max-width: 980px){
       .panel.view-mode .row[style*="align-items:flex-start"] > .col .row{ grid-template-columns: repeat(1, minmax(0, 1fr)); }
     }
+
+    /* ✅ Ajustes móviles para que Categorías + contador NO desborden */
+    @media (max-width: 620px){
+      .header-inner{padding:12px 14px}
+      .container{padding:14px}
+      .searchbar{flex-direction:column;align-items:stretch}
+      .search-actions{width:100%}
+      .search-actions .btn{flex:1}
+      #categoryFilter{min-width:0 !important; width: 100% !important;}
+      #memberCountBadge{width:100%; justify-content:space-between;}
+    }
   </style>
 </head>
 
@@ -303,35 +318,27 @@
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
     // ✅ Storage seguro para iOS/PWA (evita fallos de localStorage en "cold start")
-const safeStorage = {
-  getItem: (key) => {
-    try { return window.localStorage.getItem(key); } catch { return null; }
-  },
-  setItem: (key, value) => {
-    try { window.localStorage.setItem(key, value); } catch {}
-  },
-  removeItem: (key) => {
-    try { window.localStorage.removeItem(key); } catch {}
-  },
-};
-
+    const safeStorage = {
+      getItem: (key) => { try { return window.localStorage.getItem(key); } catch { return null; } },
+      setItem: (key, value) => { try { window.localStorage.setItem(key, value); } catch {} },
+      removeItem: (key) => { try { window.localStorage.removeItem(key); } catch {} },
+    };
 
     // ✅ MISMAS credenciales que tu app (publishable)
     const SUPABASE_URL = "https://ggznwqocjvfawjmbtzda.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_sXfYr31mrDcwkgPDY9pWsQ_C6x1yRhc";
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storage: safeStorage,          // ✅ usa el storage seguro
-    storageKey: "ipuc-miembros-auth", // ✅ clave fija (evita inconsistencias)
-  },
-});
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: safeStorage,             // ✅ usa el storage seguro
+        storageKey: "ipuc-miembros-auth",  // ✅ clave fija (evita inconsistencias)
+      },
+    });
 
-
-// ✅ Precalentar sesión antes del primer render (clave en PWA/iOS)
-await supabase.auth.getSession();
+    // ✅ Precalentar sesión antes del primer render (clave en PWA/iOS)
+    await supabase.auth.getSession();
 
     const app = document.getElementById("app");
 
@@ -392,39 +399,35 @@ await supabase.auth.getSession();
     function normalizeEmail(email){ return String(email||"").trim().toLowerCase(); }
 
     // ===== AUTH (Google via Supabase) =====
- async function signInGoogle(){
-  const base = window.location.href.split("#")[0].split("?")[0].replace(/[^/]*$/, "");
-  const redirectTo = base + "index.html";
+    async function signInGoogle(){
+      const base = window.location.href.split("#")[0].split("?")[0].replace(/[^/]*$/, "");
+      const redirectTo = base + "index.html";
 
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo,
-      queryParams: {
-        prompt: "select_account"
-      }
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          queryParams: { prompt: "select_account" }
+        }
+      });
+
+      if (error) throw error;
     }
-  });
-
-  if (error) throw error;
-}
-
 
     async function signOut(){
       await supabase.auth.signOut();
     }
 
-async function getAuthedUser(){
-  // iOS/PWA a veces tarda en restaurar storage en "cold start"
-  for (let i = 0; i < 3; i++){
-    const { data } = await supabase.auth.getSession();
-    const user = data?.session?.user || null;
-    if (user) return user;
-    await new Promise(r => setTimeout(r, 250)); // 250ms
-  }
-  return null;
-}
-
+    async function getAuthedUser(){
+      // iOS/PWA a veces tarda en restaurar storage en "cold start"
+      for (let i = 0; i < 3; i++){
+        const { data } = await supabase.auth.getSession();
+        const user = data?.session?.user || null;
+        if (user) return user;
+        await new Promise(r => setTimeout(r, 250)); // 250ms
+      }
+      return null;
+    }
 
     async function isEmailAllowed(email){
       const e = normalizeEmail(email);
@@ -438,46 +441,18 @@ async function getAuthedUser(){
     // ===== Storage helpers =====
     function safeName(name){ return String(name||"").replace(/[^\w.\-]+/g,"_").slice(0,120); }
 
-async function uploadFile(bucket, file, prefix){
-  if (!file) return { path:null, url:null };
+    async function uploadFile(bucket, file, prefix){
+      if (!file) return { path:null, url:null };
+      const ext = (String(file.name||"").split(".").pop() || "bin").toLowerCase();
+      const fileName = `${prefix}_${Date.now()}_${safeName(file.name)}`;
+      const storagePath = `${prefix}/${fileName}.${ext}`;
 
-  // ✅ Evita rutas raras
-  const cleanPrefix = safeName(String(prefix || "unknown").trim() || "unknown");
+      const { error: upErr } = await supabase.storage.from(bucket).upload(storagePath, file, { upsert:true });
+      if (upErr) throw new Error("Upload error: " + upErr.message);
 
-  // ✅ Evita .pdf.pdf (nombre base sin extensión)
-  const originalName = String(file.name || "archivo");
-  const extMatch = originalName.match(/\.([a-zA-Z0-9]+)$/);
-  const ext = (extMatch?.[1] || "bin").toLowerCase();
-  const baseName = originalName.replace(/\.[^/.]+$/, "");
-  const safeBase = safeName(baseName);
-
-  const fileName = `${cleanPrefix}_${Date.now()}_${safeBase}.${ext}`;
-  const storagePath = `${cleanPrefix}/${fileName}`;
-
-  // ✅ Workaround móviles (iOS/Android): subir como Blob (evita cuelgue “Guardando…”)
-  const buf = await file.arrayBuffer();
-  const blob = new Blob([buf], { type: file.type || "application/octet-stream" });
-
-  // ✅ Timeout para que no quede infinito
-  const timeoutMs = 45000;
-  const timeout = new Promise((_, rej) =>
-    setTimeout(() => rej(new Error("Timeout subiendo archivo (45s). Revisa conexión móvil o tamaño del archivo.")), timeoutMs)
-  );
-
-  const uploadPromise = supabase.storage.from(bucket).upload(storagePath, blob, {
-    upsert: true,
-    contentType: file.type || "application/octet-stream",
-    cacheControl: "3600",
-  });
-
-  const { data: upData, error: upErr } = await Promise.race([uploadPromise, timeout]);
-  if (upErr) throw new Error("Upload error: " + upErr.message);
-
-  const { data } = supabase.storage.from(bucket).getPublicUrl(storagePath);
-  return { path: storagePath, url: data?.publicUrl || null };
-}
-
-
+      const { data } = supabase.storage.from(bucket).getPublicUrl(storagePath);
+      return { path: storagePath, url: data?.publicUrl || null };
+    }
 
     // ===== Members API (misma lógica que tu preload) =====
     async function searchMembers(query){
@@ -514,13 +489,11 @@ async function uploadFile(bucket, file, prefix){
       return count ?? 0;
     }
 
-    async function saveMember(member, photoFile, docFile){
+    async function saveMember(member, photoFile){
       const prefix = (member.identification || "unknown").trim() || "unknown";
       let photo = { path:null, url:null };
-      let doc = { path:null, url:null };
 
       if (photoFile) photo = await uploadFile("member-photos", photoFile, prefix);
-      if (docFile) doc = await uploadFile("member-docs", docFile, prefix);
 
       const payload = {
         first_names: member.first_names,
@@ -547,9 +520,8 @@ async function uploadFile(bucket, file, prefix){
         is_sympathizer: !!member.is_sympathizer,
         observations: member.observations || null,
         photo_path: photo.path,
-        photo_url: photo.url,
-        id_document_path: doc.path,
-        id_document_url: doc.url,
+        photo_url: photo.url
+        // ✅ Documento de identidad removido
       };
 
       const { data, error } = await supabase.from("members").insert(payload).select("*").single();
@@ -557,15 +529,12 @@ async function uploadFile(bucket, file, prefix){
       return data;
     }
 
-    async function updateMember(id, member, photoFile, docFile){
+    async function updateMember(id, member, photoFile){
       if (!id) throw new Error("ID requerido para actualizar");
       const prefix = (member.identification || "unknown").trim() || "unknown";
 
       let photo = { path: member.photo_path || null, url: member.photo_url || null };
-      let doc = { path: member.id_document_path || null, url: member.id_document_url || null };
-
       if (photoFile) photo = await uploadFile("member-photos", photoFile, prefix);
-      if (docFile) doc = await uploadFile("member-docs", docFile, prefix);
 
       const payload = {
         first_names: member.first_names,
@@ -592,9 +561,8 @@ async function uploadFile(bucket, file, prefix){
         is_sympathizer: !!member.is_sympathizer,
         observations: member.observations || null,
         photo_path: photo.path,
-        photo_url: photo.url,
-        id_document_path: doc.path,
-        id_document_url: doc.url,
+        photo_url: photo.url
+        // ✅ Documento de identidad removido
       };
 
       const { data, error } = await supabase.from("members").update(payload).eq("id", id).select("*").single();
@@ -607,7 +575,7 @@ async function uploadFile(bucket, file, prefix){
 
       const { data: row, error: fetchErr } = await supabase
         .from("members")
-        .select("id, photo_path, id_document_path")
+        .select("id, photo_path")
         .eq("id", id)
         .maybeSingle();
       if (fetchErr) throw new Error("Error leyendo registro: " + fetchErr.message);
@@ -616,10 +584,6 @@ async function uploadFile(bucket, file, prefix){
       if (row.photo_path){
         const { error: e1 } = await supabase.storage.from("member-photos").remove([row.photo_path]);
         if (e1) throw new Error("No se pudo borrar foto: " + e1.message);
-      }
-      if (row.id_document_path){
-        const { error: e2 } = await supabase.storage.from("member-docs").remove([row.id_document_path]);
-        if (e2) throw new Error("No se pudo borrar documento: " + e2.message);
       }
 
       const { data, error } = await supabase.from("members").delete().eq("id", id).select("*");
@@ -658,10 +622,10 @@ async function uploadFile(bucket, file, prefix){
         observations: "",
         photo_file: null,
         photo_preview_url: "",
-        id_document_file: null,
         gender: "",
         age: null,
         church_role: ""
+        // ✅ documento identidad removido
       };
     }
 
@@ -789,16 +753,16 @@ async function uploadFile(bucket, file, prefix){
           <div class="card">
 
             <div class="row" style="align-items:center;justify-content:space-between;">
-              <div>
+              <div style="min-width:0;">
                 <h3 style="margin:0;">Módulo: Miembros</h3>
 
-                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; max-width:100%;">
                   <div class="small">Búsqueda y registro de miembros</div>
 
-                  <div style="display:flex; align-items:center; gap:10px; flex-wrap:nowrap;">
+                  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; width:100%; max-width:560px;">
                     <span class="small">Categorías</span>
 
-                    <select id="categoryFilter" class="select" style="min-width:240px; width:auto;">
+                    <select id="categoryFilter" class="select" style="min-width:240px; width:auto; flex:1 1 240px;">
                       <option value="todo">Todo</option>
                       <option value="damas">Damas Dorcas</option>
                       <option value="caballeros">Caballeros</option>
@@ -809,7 +773,7 @@ async function uploadFile(bucket, file, prefix){
                       <option value="simpatizantes">Simpatizantes</option>
                     </select>
 
-                    <span class="badge count-badge" id="memberCountBadge">
+                    <span class="badge count-badge" id="memberCountBadge" style="flex:1 1 180px;">
                       Miembros: <b id="memberCount" class="count-number">0</b>
                     </span>
                   </div>
@@ -994,22 +958,8 @@ async function uploadFile(bucket, file, prefix){
                     </div>
 
                     <div class="col">
-                      <div class="filebox" id="docFileBox">
-                        <label>Documento de identificación (PDF/JPG/PNG/otros)</label>
-<input id="id_document" type="file" accept=".pdf,image/*" />
-
-                        <div class="hint" id="docInfo">Ningún archivo seleccionado.</div>
-                      </div>
-
-                      <div id="docExistingBox" class="filebox" style="margin-top:10px; display:none;">
-                        <label>Documento cargado</label>
-                        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                          <button class="btn" id="btnViewDoc">Ver</button>
-                          <button class="btn" id="btnDownloadDoc">Descargar</button>
-                          <span class="small muted" id="docExistingLabel"></span>
-                        </div>
-                        <div class="hint">* Se abre en tu navegador (no afecta el formulario).</div>
-                      </div>
+                      <!-- ✅ Se eliminó todo el bloque del documento de identidad -->
+                      <div class="hint muted"> </div>
                     </div>
                   </div>
 
@@ -1064,12 +1014,9 @@ async function uploadFile(bucket, file, prefix){
         const genderSel = $("#gender"); if (genderSel) genderSel.disabled = isReadonly;
 
         const photoBox = $("#photoFileBox");
-        const docBox = $("#docFileBox");
         if (photoBox) photoBox.style.display = isReadonly ? "none" : "";
-        if (docBox) docBox.style.display = isReadonly ? "none" : "";
 
         if ($("#photoInput")) $("#photoInput").disabled = isReadonly;
-        if ($("#id_document")) $("#id_document").disabled = isReadonly;
 
         node.querySelector("#btnSave").style.display = isReadonly ? "none" : "";
         $("#statusBadge").textContent = isReadonly ? "Solo lectura" : "Sin guardar";
@@ -1094,40 +1041,6 @@ async function uploadFile(bucket, file, prefix){
         img.src = url;
         img.alt = "Foto miembro";
         box.appendChild(img);
-      }
-
-      function renderDocInfo(file){
-        const info = $("#docInfo");
-        if (!file){
-          info.textContent = "Ningún archivo seleccionado.";
-          return;
-        }
-        const sizeKb = Math.round(file.size / 1024);
-        info.textContent = `${file.name} · ${sizeKb} KB`;
-      }
-
-      function renderExistingDoc(url){
-        const box = $("#docExistingBox");
-        const label = $("#docExistingLabel");
-        if (!box) return;
-
-        if (!url){
-          box.style.display = "none";
-          if (label) label.textContent = "";
-          box.dataset.url = "";
-          return;
-        }
-
-        box.style.display = "";
-        box.dataset.url = url;
-
-        try{
-          const u = new URL(url);
-          const filename = decodeURIComponent(u.pathname.split("/").pop() || "");
-          if (label) label.textContent = filename ? `Archivo: ${filename}` : "";
-        } catch {
-          if (label) label.textContent = "";
-        }
       }
 
       function fillForm(m){
@@ -1157,8 +1070,6 @@ async function uploadFile(bucket, file, prefix){
         $("#gender").value = m.gender || "";
 
         renderPhoto(m.photo_preview_url || m.photo_url || "");
-        renderDocInfo(m.id_document_file || null);
-        renderExistingDoc(m.id_document_url || "");
       }
 
       function readForm(){
@@ -1299,13 +1210,6 @@ async function uploadFile(bucket, file, prefix){
         $("#statusBadge").textContent = "Cambios sin guardar";
       });
 
-      $("#id_document").addEventListener("change", ()=>{
-        const file = $("#id_document").files && $("#id_document").files[0] ? $("#id_document").files[0] : null;
-        state.memberDraft.id_document_file = file;
-        renderDocInfo(file);
-        $("#statusBadge").textContent = "Cambios sin guardar";
-      });
-
       [
         "first_names","last_names","identification","address","city","birth_date",
         "father_name","mother_name","congregation_name","conversion_time",
@@ -1318,19 +1222,6 @@ async function uploadFile(bucket, file, prefix){
         const markDirty = ()=> ($("#statusBadge").textContent = "Cambios sin guardar");
         e.addEventListener("input", markDirty);
         e.addEventListener("change", markDirty);
-      });
-
-      // View/download existing doc
-      $("#btnViewDoc")?.addEventListener("click", ()=>{
-        const url = $("#docExistingBox")?.dataset?.url || "";
-        if (!url) return;
-        window.open(url, "_blank");
-      });
-      $("#btnDownloadDoc")?.addEventListener("click", ()=>{
-        const url = $("#docExistingBox")?.dataset?.url || "";
-        if (!url) return;
-        const downloadUrl = url.includes("?") ? (url + "&download=1") : (url + "?download=1");
-        window.open(downloadUrl, "_blank");
       });
 
       // Buttons
@@ -1407,25 +1298,14 @@ async function uploadFile(bucket, file, prefix){
           }
 
           const photoFile = state.memberDraft.photo_file || null;
-          const docFile = state.memberDraft.id_document_file || null;
-
-          if (docFile){
-  // 20MB ejemplo, ajusta si quieres
-  const maxBytes = 20 * 1024 * 1024;
-  if (docFile.size > maxBytes){
-    toast("El documento supera 20MB. Usa un archivo más liviano.", "info");
-    return;
-  }
-}
-
 
           $("#statusBadge").textContent = "Guardando...";
 
           if (state.selectedId){
-            await updateMember(state.selectedId, m, photoFile, docFile);
+            await updateMember(state.selectedId, m, photoFile);
             toast("✅ Cambios guardados correctamente.", "success");
           } else {
-            await saveMember(m, photoFile, docFile);
+            await saveMember(m, photoFile);
             toast("✅ Guardado correctamente.", "success");
           }
 
@@ -1527,77 +1407,73 @@ async function uploadFile(bucket, file, prefix){
     }
 
     // ===== Boot: handle session, allowed emails gate =====
-async function bootstrap(maybeUser = null){
-  // 1) Toma el user que venga del evento, o intenta restaurarlo
-  const user = maybeUser || await getAuthedUser();
+    async function bootstrap(maybeUser = null){
+      // 1) Toma el user que venga del evento, o intenta restaurarlo
+      const user = maybeUser || await getAuthedUser();
 
-  if (!user){
-    state.auth.authed = false;
-    state.auth.email = "";
-    state.auth.photoUrl = "";
-    render();
-    return;
-  }
+      if (!user){
+        state.auth.authed = false;
+        state.auth.email = "";
+        state.auth.photoUrl = "";
+        render();
+        return;
+      }
 
-  const email = user.email || "";
-  try{
-    const allowed = await isEmailAllowed(email);
-    if (!allowed){
-      await signOut();
-      state.auth.authed = false;
-      state.auth.email = "";
-      state.auth.photoUrl = "";
-      render();
-      mostrarAviso(
-        `El correo no tiene permiso para usar esta app:\n\n${email}`,
-        "alerta",
-        "Cuenta no autorizada"
-      );
-      return;
+      const email = user.email || "";
+      try{
+        const allowed = await isEmailAllowed(email);
+        if (!allowed){
+          await signOut();
+          state.auth.authed = false;
+          state.auth.email = "";
+          state.auth.photoUrl = "";
+          render();
+          mostrarAviso(
+            `El correo no tiene permiso para usar esta app:\n\n${email}`,
+            "alerta",
+            "Cuenta no autorizada"
+          );
+          return;
+        }
+
+        state.auth.authed = true;
+        state.auth.email = email;
+        state.auth.photoUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || "";
+        render();
+      } catch(e){
+        state.auth.authed = false;
+        state.auth.email = "";
+        state.auth.photoUrl = "";
+        render();
+        mostrarAviso(
+          "No se pudo verificar el permiso del correo.\n\n" +
+          "Revisa las Policies (RLS) de la tabla allowed_emails para permitir SELECT a usuarios autenticados (o usa una función RPC).\n\n" +
+          (e?.message || e),
+          "error",
+          "Permisos"
+        );
+      }
     }
 
-    state.auth.authed = true;
-    state.auth.email = email;
-    state.auth.photoUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || "";
+    // 1) Render inicial (UI base)
     render();
-    // OJO: esto se va a disparar también en INITIAL_SESSION, si no quieres toast al abrir:
-    // toast("✅ Sesión iniciada.", "success");
-  } catch(e){
-    state.auth.authed = false;
-    state.auth.email = "";
-    state.auth.photoUrl = "";
-    render();
-    mostrarAviso(
-      "No se pudo verificar el permiso del correo.\n\n" +
-      "Revisa las Policies (RLS) de la tabla allowed_emails para permitir SELECT a usuarios autenticados (o usa una función RPC).\n\n" +
-      (e?.message || e),
-      "error",
-      "Permisos"
-    );
-  }
-}
 
+    // 2) Auth state: aquí Supabase entrega la sesión ya restaurada (clave para iOS)
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      // Cuando la app abre "en frío", el evento INITIAL_SESSION es el que importa
+      if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        await bootstrap(session?.user || null);
+      }
+      if (event === "SIGNED_OUT") {
+        state.auth.authed = false;
+        state.auth.email = "";
+        state.auth.photoUrl = "";
+        render();
+      }
+    });
 
- // 1) Render inicial (UI base)
-render();
-
-// 2) Auth state: aquí Supabase entrega la sesión ya restaurada (clave para iOS)
-supabase.auth.onAuthStateChange(async (event, session) => {
-  // Cuando la app abre "en frío", el evento INITIAL_SESSION es el que importa
-  if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-    await bootstrap(session?.user || null);
-  }
-  if (event === "SIGNED_OUT") {
-    state.auth.authed = false;
-    state.auth.email = "";
-    state.auth.photoUrl = "";
-    render();
-  }
-});
-
-// 3) Bootstrap inicial con retry (por si onAuthStateChange tarda)
-bootstrap(null);
-
+    // 3) Bootstrap inicial con retry (por si onAuthStateChange tarda)
+    bootstrap(null);
   </script>
 </body>
 </html>
