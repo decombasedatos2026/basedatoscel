@@ -335,18 +335,40 @@ input[type="file"]::-webkit-file-upload-button{
   min-width: 0;
 }
 
-    /* ✅ FIX real para input file en móvil: permitir que se encoja y no empuje el layout */
-#photoFileBox{ max-width: 100%; }
 
-#photoInput{
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;      /* CLAVE: deja que el control se encoja */
-  display: block;
-  box-sizing: border-box;
-  -webkit-appearance: none;
-  appearance: none;
+
+
+    /* ✅ FIX móvil: bloque de foto (avatar + filebox) no debe desbordar ni quedar enorme */
+@media (max-width: 620px){
+  /* Esta es EXACTAMENTE la fila que tiene style="align-items:flex-start" (foto + formulario) */
+  .panel .row[style*="align-items:flex-start"]{
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* El contenedor que tiene la foto (el primer div dentro de esa fila) */
+  .panel .row[style*="align-items:flex-start"] > div:first-child{
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* El filebox y el input adentro a ancho completo */
+  #photoFileBox{
+    width: 100%;
+    max-width: 100%;
+  }
+
+  #photoInput{
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* (Opcional) centrar el cuadro de la foto sin agrandar nada */
+  #photoBox{
+    margin: 0 auto;
+  }
 }
+
 
   </style>
 </head>
