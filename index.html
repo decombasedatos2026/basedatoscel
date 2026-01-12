@@ -476,9 +476,15 @@ async function uploadFile(bucket, file, prefix){
     );
   }
 
-  const ext = (String(file.name||"").split(".").pop() || "bin").toLowerCase();
-  const fileName = `${prefix}_${Date.now()}_${safeName(file.name)}`;
-  const storagePath = `${prefix}/${fileName}.${ext}`;
+  const originalName = String(file.name || "archivo");
+  const ext = (originalName.includes(".") ? originalName.split(".").pop() : "bin").toLowerCase();
+
+  // ✅ Nombre sin la extensión para no terminar en .pdf.pdf
+  const baseName = safeName(originalName).replace(/\.[^/.]+$/, "");
+  const fileName = `${prefix}_${Date.now()}_${baseName}.${ext}`;
+
+  const storagePath = `${prefix}/${fileName}`;
+
 
   // ✅ Documentos: subida resumible (TUS) con JWT real
 // ✅ Para documentos en móvil: usar subida resumible (TUS)
@@ -548,6 +554,21 @@ if (bucket === "member-docs"){
         cacheControl: "3600",
         filename: file.name || "documento",
       },
+
+
+            onAfterResponse: (req, res) => {
+        const status = res?.getStatus ? res.getStatus() : null;
+
+        // Si Supabase devuelve 401/403/404/409 etc, forzamos error con mensaje útil
+        if (status && status >= 400) {
+          const body = res?.getBody ? res.getBody() : "";
+          console.log("[TUS] afterResponse error:", status, body);
+
+          // Esto hace que TUS dispare onError
+          throw new Error(`Servidor respondió ${status}: ${String(body).slice(0, 250)}`);
+        }
+      },
+
 
       onError: (error) => {
         clearInterval(stallTimer);
