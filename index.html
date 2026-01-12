@@ -623,6 +623,81 @@ function hideLoader(){
       return list.includes(e);
     }
 
+    async function requireAuth({ silent = false } = {}){
+  try{
+    // 1) Sesión REAL (token real)
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+
+    const session = data?.session || null;
+    const user = session?.user || null;
+
+    if (!user){
+      state.auth.authed = false;
+      state.auth.email = "";
+      state.auth.photoUrl = "";
+      state.auth.allowedEmail = "";
+      state.auth.allowedOk = false;
+      state.auth.ready = true;
+      render();
+      if (!silent){
+        mostrarAviso("Tu sesión no está activa. Inicia sesión nuevamente.", "alerta", "Sesión requerida");
+      }
+      return false;
+    }
+
+    const email = user.email || "";
+
+    // 2) Validación allowed_emails con cache (evita consultas repetidas)
+    const normalized = normalizeEmail(email);
+    const cacheHit = (state.auth.allowedEmail === normalized && state.auth.allowedOk === true);
+
+    if (!cacheHit){
+      const allowed = await isEmailAllowed(email);
+      if (!allowed){
+        await supabase.auth.signOut();
+        state.auth.authed = false;
+        state.auth.email = "";
+        state.auth.photoUrl = "";
+        state.auth.allowedEmail = "";
+        state.auth.allowedOk = false;
+        state.auth.ready = true;
+        render();
+        if (!silent){
+          mostrarAviso(
+            `El correo no tiene permiso para usar esta app:\n\n${email}`,
+            "alerta",
+            "Cuenta no autorizada"
+          );
+        }
+        return false;
+      }
+
+      state.auth.allowedEmail = normalized;
+      state.auth.allowedOk = true;
+    }
+
+    // 3) Sesión OK → sincroniza estado UI
+    state.auth.authed = true;
+    state.auth.email = email;
+    state.auth.photoUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || "";
+    state.auth.ready = true;
+
+    return true;
+
+  } catch(e){
+    // Ante cualquier error, marca como no lista pero bloquea acciones para evitar pérdidas
+    state.auth.ready = true;
+    state.auth.authed = false;
+    render();
+    if (!silent){
+      mostrarAviso("No se pudo verificar la sesión.\n\n" + (e?.message || e), "error", "Sesión");
+    }
+    return false;
+  }
+}
+
+
     // ===== Storage helpers =====
     function safeName(name){ return String(name||"").replace(/[^\w.\-]+/g,"_").slice(0,120); }
 
@@ -785,7 +860,15 @@ function hideLoader(){
       memberDraft: null,
       viewMode: "edit",
       category: "todo",
-      auth: { authed:false, email:"", photoUrl:"" }
+     auth: {
+  authed: false,
+  ready: false,          // ✅ indica si la sesión ya fue verificada
+  email: "",
+  photoUrl: "",
+  allowedEmail: "",      // ✅ cache del email validado en allowed_emails
+  allowedOk: false       // ✅ cache del resultado allowed
+}
+
     };
 
     function cloneMemberSafe(obj){
@@ -913,13 +996,17 @@ function hideLoader(){
 
       btnLogout?.addEventListener("click", async ()=>{
         try{
-          await signOut();
-          state.auth.authed = false;
-          state.auth.email = "";
-          state.auth.photoUrl = "";
-          paintAuthFast();
-          toast("✅ Sesión cerrada.", "success");
-          render();
+     await signOut();
+state.auth.authed = false;
+state.auth.ready = true;
+state.auth.email = "";
+state.auth.photoUrl = "";
+state.auth.allowedEmail = "";
+state.auth.allowedOk = false;
+paintAuthFast();
+toast("✅ Sesión cerrada.", "success");
+render();
+
         } catch(e){
           mostrarAviso("No se pudo cerrar sesión: " + (e?.message || e), "error", "Logout");
         }
@@ -1432,17 +1519,31 @@ function viewMiembros(){
     render();
   });
 
-  $("#btnEdit").addEventListener("click", ()=>{
-    if (!state.selectedId){
-      toast("⚠️ Selecciona un miembro primero.", "info");
-      return;
-    }
-    state.viewMode = "edit";
-    render();
-  });
+$("#btnEdit").addEventListener("click", async ()=>{
+  const okAuth = await requireAuth();
+  if (!okAuth){
+    $("#statusBadge").textContent = "Login requerido";
+    return;
+  }
+
+  if (!state.selectedId){
+    toast("⚠️ Selecciona un miembro primero.", "info");
+    return;
+  }
+  state.viewMode = "edit";
+  render();
+});
+
 
   $("#btnDelete").addEventListener("click", async ()=>{
     try{
+          const okAuth = await requireAuth();
+          if (!okAuth){
+            $("#statusBadge").textContent = "Login requerido";
+            return;
+          }
+
+      
       if (!state.selectedId){
         toast("⚠️ Selecciona un miembro primero.", "info");
         return;
@@ -1480,6 +1581,17 @@ function viewMiembros(){
 $("#btnSave").addEventListener("click", async ()=>{
   showLoader("Guardando…", "No cierres la app mientras se guarda");
   try{
+
+
+        const okAuth = await requireAuth();
+        if (!okAuth){
+          // deja el badge coherente
+          $("#statusBadge").textContent = "Login requerido";
+          return;
+        }
+
+
+    
     const m = readForm();
 
     if (!m.first_names || !m.last_names || !m.identification){
@@ -1592,11 +1704,14 @@ $("#btnSave").addEventListener("click", async ()=>{
   updateMemberCount();
 
   // Gate actions by auth
-  const enabled = !!state.auth.authed;
+ const enabled = !!state.auth.authed && !!state.auth.ready;
+
   $("#btnSave").disabled = !enabled;
   $("#btnDelete").disabled = !enabled;
   $("#btnEdit").disabled = !enabled;
-  if (!enabled) $("#statusBadge").textContent = "Login requerido";
+  if (!state.auth.ready) $("#statusBadge").textContent = "Verificando sesión...";
+else if (!enabled) $("#statusBadge").textContent = "Login requerido";
+
 
   // focus
   $("#searchBox")?.focus();
@@ -1619,53 +1734,24 @@ function render(){
 
 
     // ===== Boot: handle session, allowed emails gate =====
-    async function bootstrap(maybeUser = null){
-      // 1) Toma el user que venga del evento, o intenta restaurarlo
-      const user = maybeUser || await getAuthedUser();
+async function bootstrap(maybeUser = null){
+  // ✅ Mientras se verifica, bloquea acciones (ready=false)
+  state.auth.ready = false;
+  render();
 
-      if (!user){
-        state.auth.authed = false;
-        state.auth.email = "";
-        state.auth.photoUrl = "";
-        render();
-        return;
-      }
+  // Si viene user (de onAuthStateChange), ok; si no, valida por getSession real
+  if (maybeUser){
+    // Forzamos requireAuth para validar allowed y sincronizar estado
+    await requireAuth({ silent: true });
+    render();
+    return;
+  }
 
-      const email = user.email || "";
-      try{
-        const allowed = await isEmailAllowed(email);
-        if (!allowed){
-          await signOut();
-          state.auth.authed = false;
-          state.auth.email = "";
-          state.auth.photoUrl = "";
-          render();
-          mostrarAviso(
-            `El correo no tiene permiso para usar esta app:\n\n${email}`,
-            "alerta",
-            "Cuenta no autorizada"
-          );
-          return;
-        }
+  // Caso normal: verificamos sesión real
+  await requireAuth({ silent: true });
+  render();
+}
 
-        state.auth.authed = true;
-        state.auth.email = email;
-        state.auth.photoUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || "";
-        render();
-      } catch(e){
-        state.auth.authed = false;
-        state.auth.email = "";
-        state.auth.photoUrl = "";
-        render();
-        mostrarAviso(
-          "No se pudo verificar el permiso del correo.\n\n" +
-          "Revisa las Policies (RLS) de la tabla allowed_emails para permitir SELECT a usuarios autenticados (o usa una función RPC).\n\n" +
-          (e?.message || e),
-          "error",
-          "Permisos"
-        );
-      }
-    }
 
     // 1) Render inicial (UI base)
     render();
@@ -1676,12 +1762,16 @@ function render(){
       if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         await bootstrap(session?.user || null);
       }
-      if (event === "SIGNED_OUT") {
-        state.auth.authed = false;
-        state.auth.email = "";
-        state.auth.photoUrl = "";
-        render();
-      }
+  if (event === "SIGNED_OUT") {
+  state.auth.authed = false;
+  state.auth.ready = true;       // o false si quieres mostrar "Verificando..."
+  state.auth.email = "";
+  state.auth.photoUrl = "";
+  state.auth.allowedEmail = "";
+  state.auth.allowedOk = false;
+  render();
+}
+
     });
 
     // 3) Bootstrap inicial con retry (por si onAuthStateChange tarda)
