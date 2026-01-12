@@ -449,16 +449,25 @@ async function getAuthedUser(){
     // ===== Storage helpers =====
     function safeName(name){ return String(name||"").replace(/[^\w.\-]+/g,"_").slice(0,120); }
 
+
+    function withTimeout(promise, ms, label="Operación"){
+  let t;
+  const timeout = new Promise((_, reject)=>{
+    t = setTimeout(()=>reject(new Error(`${label} tardó demasiado (${Math.round(ms/1000)}s). Intenta de nuevo.`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(()=> clearTimeout(t));
+}
+
+
 async function uploadFile(bucket, file, prefix){
   if (!file) return { path:null, url:null };
 
-  // ✅ Validaciones rápidas (móvil a veces entrega size 0)
   const size = Number(file.size || 0);
   if (!Number.isFinite(size) || size <= 0){
     throw new Error(
       "El archivo seleccionado parece vacío (size=0).\n" +
       "En Android/iOS esto pasa si eliges desde Drive/Archivos con permisos restringidos.\n\n" +
-      "Solución: vuelve a elegir el archivo, o primero descárgalo al teléfono y luego selecciónalo."
+      "Solución: descárgalo al teléfono y selecciónalo desde 'Archivos' local."
     );
   }
 
@@ -466,26 +475,27 @@ async function uploadFile(bucket, file, prefix){
   const fileName = `${prefix}_${Date.now()}_${safeName(file.name)}`;
   const storagePath = `${prefix}/${fileName}.${ext}`;
 
-  // ✅ En móvil: convertir a Blob desde ArrayBuffer (más estable que subir File directo)
+  // Leer archivo (también con timeout)
   let bodyBlob;
   try{
-    const ab = await file.arrayBuffer();
+    const ab = await withTimeout(file.arrayBuffer(), 20000, "Lectura del archivo");
     bodyBlob = new Blob([ab], { type: file.type || "application/octet-stream" });
   } catch (e){
     throw new Error(
-      "No se pudo leer el archivo en el celular (arrayBuffer falló).\n" +
-      "Intenta seleccionar el archivo desde 'Archivos' local o descárgalo primero.\n\n" +
+      "No se pudo leer el archivo en el celular.\n" +
       (e?.message || e)
     );
   }
 
-  // ✅ Sube el Blob
-  const { error: upErr } = await supabaseStorage.storage
-    .from(bucket)
-    .upload(storagePath, bodyBlob, {
+  // Subir con timeout (CLAVE para evitar que se quede colgado)
+  const { error: upErr } = await withTimeout(
+    supabaseStorage.storage.from(bucket).upload(storagePath, bodyBlob, {
       upsert: true,
       contentType: file.type || "application/octet-stream",
-    });
+    }),
+    60000,
+    "Subida del documento"
+  );
 
   if (upErr){
     throw new Error(
@@ -501,6 +511,7 @@ async function uploadFile(bucket, file, prefix){
   const { data } = supabaseStorage.storage.from(bucket).getPublicUrl(storagePath);
   return { path: storagePath, url: data?.publicUrl || null };
 }
+
 
 
 
@@ -1433,15 +1444,17 @@ async function uploadFile(bucket, file, prefix){
           const photoFile = state.memberDraft.photo_file || null;
           const docFile = state.memberDraft.id_document_file || null;
 
-          $("#statusBadge").textContent = "Guardando...";
+        $("#statusBadge").textContent = docFile ? "Subiendo documento..." : "Guardando...";
 
-          if (state.selectedId){
-            await updateMember(state.selectedId, m, photoFile, docFile);
-            toast("✅ Cambios guardados correctamente.", "success");
-          } else {
-            await saveMember(m, photoFile, docFile);
-            toast("✅ Guardado correctamente.", "success");
-          }
+
+    if (state.selectedId){
+  await withTimeout(updateMember(state.selectedId, m, photoFile, docFile), 60000, "Actualizar miembro");
+  toast("✅ Cambios guardados correctamente.", "success");
+} else {
+  await withTimeout(saveMember(m, photoFile, docFile), 60000, "Guardar miembro");
+  toast("✅ Guardado correctamente.", "success");
+}
+
 
           $("#statusBadge").textContent = "Guardado";
 
