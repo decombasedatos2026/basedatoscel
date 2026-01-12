@@ -369,7 +369,55 @@ input[type="file"]::-webkit-file-upload-button{
   }
 }
 
+/* ✅ Loader overlay (bloquea UI mientras guarda) */
+.loader-overlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  backdrop-filter: blur(3px);
+  z-index: 999999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+.loader-overlay.show{ display: flex; }
 
+.loader-box{
+  background: rgba(18,26,51,.98);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 16px 18px;
+  width: min(420px, 92vw);
+  box-shadow: 0 18px 50px rgba(0,0,0,.45);
+  display:flex;
+  align-items:center;
+  gap: 12px;
+}
+
+.loader-spinner{
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 3px solid rgba(255,255,255,.18);
+  border-top-color: rgba(255,255,255,.85);
+  animation: spin .8s linear infinite;
+  flex: 0 0 auto;
+}
+@keyframes spin{ to{ transform: rotate(360deg); } }
+
+.loader-text{
+  display:flex;
+  flex-direction:column;
+  gap: 2px;
+  min-width: 0;
+}
+.loader-title{ font-weight: 800; }
+.loader-sub{ font-size: 12px; color: var(--muted); }
+
+
+
+    
   </style>
 </head>
 
@@ -396,6 +444,18 @@ input[type="file"]::-webkit-file-upload-button{
       </div>
     </div>
   </div>
+
+  <!-- ✅ Loader global -->
+<div id="loaderOverlay" class="loader-overlay" aria-hidden="true">
+  <div class="loader-box" role="status" aria-live="polite">
+    <div class="loader-spinner"></div>
+    <div class="loader-text">
+      <div class="loader-title" id="loaderTitle">Procesando…</div>
+      <div class="loader-sub" id="loaderSub">Por favor espera</div>
+    </div>
+  </div>
+</div>
+
 
   <div id="app"></div>
 
@@ -444,6 +504,28 @@ input[type="file"]::-webkit-file-upload-button{
       return t.content.firstElementChild;
     }
 
+function showLoader(title="Procesando…", sub="Por favor espera"){
+  const ov = document.getElementById("loaderOverlay");
+  const t = document.getElementById("loaderTitle");
+  const s = document.getElementById("loaderSub");
+  if (!ov) return;
+
+  if (t) t.textContent = title;
+  if (s) s.textContent = sub;
+
+  ov.classList.add("show");
+  ov.setAttribute("aria-hidden", "false");
+}
+
+function hideLoader(){
+  const ov = document.getElementById("loaderOverlay");
+  if (!ov) return;
+  ov.classList.remove("show");
+  ov.setAttribute("aria-hidden", "true");
+}
+
+
+    
     function toast(msg, kind="info"){
       const cont = document.getElementById("toastContainer");
       const node = document.createElement("div");
@@ -1387,71 +1469,75 @@ function viewMiembros(){
     }
   });
 
-  $("#btnSave").addEventListener("click", async ()=>{
-    try{
-      const m = readForm();
+$("#btnSave").addEventListener("click", async ()=>{
+  showLoader("Guardando…", "No cierres la app mientras se guarda");
+  try{
+    const m = readForm();
 
-      if (!m.first_names || !m.last_names || !m.identification){
-        toast("Nombres, apellidos e identificación son obligatorios.", "info");
-        return;
-      }
-
-      const ageNum = Number(m.age);
-      if (m.age === null || !Number.isFinite(ageNum) || ageNum < 0){
-        toast("La edad es obligatoria y debe ser un número válido (>= 0).", "info");
-        return;
-      }
-
-      if (!m.gender){
-        toast("El género es obligatorio. Selecciona Masculino o Femenino.", "info");
-        return;
-      }
-
-      const photoFile = state.memberDraft.photo_file || null;
-
-      $("#statusBadge").textContent = "Guardando...";
-
-      if (state.selectedId){
-        await updateMember(state.selectedId, m, photoFile);
-        toast("✅ Cambios guardados correctamente.", "success");
-      } else {
-        await saveMember(m, photoFile);
-        toast("✅ Guardado correctamente.", "success");
-      }
-
-      $("#statusBadge").textContent = "Guardado";
-
-      setTimeout(()=>{
-        state.memberDraft = blankMember();
-        state.selectedId = null;
-        state.viewMode = "edit";
-
-        const sb = $("#searchBox");
-        if (sb) sb.value = "";
-        renderSuggestions([]);
-        updateMemberCount();
-
-        render();
-      }, 600);
-
-    } catch(err){
-      $("#statusBadge").textContent = "Error";
-      const raw = String(err?.message || err || "").toLowerCase();
-      const esDuplicado =
-        raw.includes("duplicate key") ||
-        raw.includes("unique constraint") ||
-        raw.includes("violates unique") ||
-        raw.includes("23505") ||
-        raw.includes("already exists") ||
-        raw.includes("ya existe");
-
-      if (esDuplicado){
-        mostrarAviso("⚠️ Ese documento de identificación ya está registrado. Revisa la búsqueda.", "alerta", "Documento duplicado");
-      } else {
-        mostrarAviso("❌ Error guardando: " + (err?.message || err), "error", "Guardar");
-      }
+    if (!m.first_names || !m.last_names || !m.identification){
+      toast("Nombres, apellidos e identificación son obligatorios.", "info");
+      return;
     }
-  });
+
+    const ageNum = Number(m.age);
+    if (m.age === null || !Number.isFinite(ageNum) || ageNum < 0){
+      toast("La edad es obligatoria y debe ser un número válido (>= 0).", "info");
+      return;
+    }
+
+    if (!m.gender){
+      toast("El género es obligatorio. Selecciona Masculino o Femenino.", "info");
+      return;
+    }
+
+    const photoFile = state.memberDraft.photo_file || null;
+
+    $("#statusBadge").textContent = "Guardando...";
+
+    if (state.selectedId){
+      await updateMember(state.selectedId, m, photoFile);
+      toast("✅ Cambios guardados correctamente.", "success");
+    } else {
+      await saveMember(m, photoFile);
+      toast("✅ Guardado correctamente.", "success");
+    }
+
+    $("#statusBadge").textContent = "Guardado";
+
+    setTimeout(()=>{
+      state.memberDraft = blankMember();
+      state.selectedId = null;
+      state.viewMode = "edit";
+
+      const sb = $("#searchBox");
+      if (sb) sb.value = "";
+      renderSuggestions([]);
+      updateMemberCount();
+
+      render();
+    }, 600);
+
+  } catch(err){
+    $("#statusBadge").textContent = "Error";
+    const raw = String(err?.message || err || "").toLowerCase();
+    const esDuplicado =
+      raw.includes("duplicate key") ||
+      raw.includes("unique constraint") ||
+      raw.includes("violates unique") ||
+      raw.includes("23505") ||
+      raw.includes("already exists") ||
+      raw.includes("ya existe");
+
+    if (esDuplicado){
+      mostrarAviso("⚠️ Ese documento de identificación ya está registrado. Revisa la búsqueda.", "alerta", "Documento duplicado");
+    } else {
+      mostrarAviso("❌ Error guardando: " + (err?.message || err), "error", "Guardar");
+    }
+  } finally {
+    hideLoader();
+  }
+});
+
 
   $("#btnSearch").addEventListener("click", async ()=>{
     try{
