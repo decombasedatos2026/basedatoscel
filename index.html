@@ -840,663 +840,676 @@ input[type="file"]::-webkit-file-upload-button{
     }
 
     // ===== Miembros view =====
-    function viewMiembros(){
-      if (!state.memberDraft) state.memberDraft = blankMember();
+function viewMiembros(){
+  if (!state.memberDraft) state.memberDraft = blankMember();
 
-      const node = el(`
-        <div class="container">
-          <div class="card">
+  const node = el(`
+    <div class="container">
+      <div class="card">
 
-      <div class="toolbar-sticky">
-  <div class="row" style="align-items:center;justify-content:space-between;">
-    <div style="min-width:0;">
-      <h3 style="margin:0;">Módulo: Miembros</h3>
+  <div class="toolbar-sticky">
+<div class="row" style="align-items:center;justify-content:space-between;">
+<div style="min-width:0;">
+  <h3 style="margin:0;">Módulo: Miembros</h3>
 
-      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; max-width:100%;">
-        <div class="small">Búsqueda y registro de miembros</div>
+  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; max-width:100%;">
+    <div class="small">Búsqueda y registro de miembros</div>
 
-        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; width:100%; max-width:560px;">
-          <span class="small">Categorías</span>
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; width:100%; max-width:560px;">
+      <span class="small">Categorías</span>
 
-          <select id="categoryFilter" class="select" style="min-width:240px; width:auto; flex:1 1 240px;">
-            <option value="todo">Todo</option>
-            <option value="damas">Damas Dorcas</option>
-            <option value="caballeros">Caballeros</option>
-            <option value="jovenes">Jóvenes</option>
-            <option value="adolescentes">Adolescentes</option>
-            <option value="senoritas">Señoritas</option>
-            <option value="ninos">Niños</option>
-            <option value="simpatizantes">Simpatizantes</option>
-          </select>
+      <select id="categoryFilter" class="select" style="min-width:240px; width:auto; flex:1 1 240px;">
+        <option value="todo">Todo</option>
+        <option value="damas">Damas Dorcas</option>
+        <option value="caballeros">Caballeros</option>
+        <option value="jovenes">Jóvenes</option>
+        <option value="adolescentes">Adolescentes</option>
+        <option value="senoritas">Señoritas</option>
+        <option value="ninos">Niños</option>
+        <option value="simpatizantes">Simpatizantes</option>
+      </select>
 
-          <span class="badge count-badge" id="memberCountBadge" style="flex:1 1 180px;">
-            Miembros: <b id="memberCount" class="count-number">0</b>
-          </span>
-        </div>
-      </div>
-    </div>
-
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      <button class="btn ok" id="btnNew">+ Nuevo</button>
-      <button class="btn edit" id="btnEdit">Editar</button>
-      <button class="btn danger" id="btnDelete">Eliminar</button>
-      <button class="btn primary" id="btnSave">Guardar</button>
+      <span class="badge count-badge" id="memberCountBadge" style="flex:1 1 180px;">
+        Miembros: <b id="memberCount" class="count-number">0</b>
+      </span>
     </div>
   </div>
+</div>
 
-  <hr class="sep" />
+<div style="display:flex;gap:10px;flex-wrap:wrap;">
+  <button class="btn ok" id="btnNew">+ Nuevo</button>
+  <button class="btn edit" id="btnEdit">Editar</button>
+  <button class="btn danger" id="btnDelete">Eliminar</button>
+  <button class="btn primary" id="btnSave">Guardar</button>
+</div>
+</div>
+
+<hr class="sep" />
 </div>
 
 
-            <div class="panel" style="margin-bottom:14px; position:relative;">
-              <label>Buscador (Nombre/Apellido o Identificación)</label>
+        <div class="panel" style="margin-bottom:14px; position:relative;">
+          <label>Buscador (Nombre/Apellido o Identificación)</label>
 
-              <div class="searchbar">
-                <input id="searchBox" placeholder="Ej: Juan Pérez o 123456789" />
-                <div class="search-actions">
-                  <button class="btn primary" id="btnSearch">Buscar</button>
-                  <button class="btn" id="btnClearSearch">Limpiar</button>
+          <div class="searchbar">
+            <input id="searchBox" placeholder="Ej: Juan Pérez o 123456789" />
+            <div class="search-actions">
+              <button class="btn primary" id="btnSearch">Buscar</button>
+              <button class="btn" id="btnClearSearch">Limpiar</button>
+            </div>
+          </div>
+
+          <div class="suggestions" id="suggestions"></div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <div class="panel">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                  <div class="small">Ficha del miembro</div>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="small">Folio #</span>
+                    <input id="folio_number" disabled style="width:140px; padding:8px 10px;" />
+                  </div>
                 </div>
+                <div class="badge" id="statusBadge">Sin guardar</div>
               </div>
 
-              <div class="suggestions" id="suggestions"></div>
-            </div>
+              <hr class="sep" />
 
-            <div class="row">
-              <div class="col">
-                <div class="panel">
-                  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-                      <div class="small">Ficha del miembro</div>
-                      <div style="display:flex;align-items:center;gap:8px;">
-                        <span class="small">Folio #</span>
-                        <input id="folio_number" disabled style="width:140px; padding:8px 10px;" />
-                      </div>
-                    </div>
-                    <div class="badge" id="statusBadge">Sin guardar</div>
+              <div class="row" style="align-items:flex-start;">
+                <div style="flex:0 0 auto;">
+                  <div class="avatar" id="photoBox">
+                    <div class="small">Sin foto</div>
                   </div>
-
-                  <hr class="sep" />
-
-                  <div class="row" style="align-items:flex-start;">
-                    <div style="flex:0 0 auto;">
-                      <div class="avatar" id="photoBox">
-                        <div class="small">Sin foto</div>
-                      </div>
-                      <div style="margin-top:10px;" class="filebox" id="photoFileBox">
-                        <label>Foto del miembro (JPG/PNG/WebP)</label>
-                        <input id="photoInput" type="file" accept="image/*" />
-                        <div class="hint" id="photoInfo">Se mostrará aquí como vista previa.</div>
-                      </div>
-                    </div>
-
-                    <div class="col">
-                      <div class="row">
-                        <div class="col">
-                          <label>Nombres *</label>
-                          <input id="first_names"  />
-                        </div>
-                        <div class="col">
-                          <label>Apellidos *</label>
-                          <input id="last_names" />
-                        </div>
-                        <div class="col">
-                          <label>Identificación *</label>
-                          <input id="identification"  />
-                        </div>
-                      </div>
-
-                      <div class="row" style="margin-top:10px;">
-                        <div class="col">
-                          <label>Dirección</label>
-                          <input id="address" />
-                        </div>
-                        <div class="col">
-                          <label>Ciudad</label>
-                          <input id="city" />
-                        </div>
-                        <div class="col">
-                          <label>Fecha de nacimiento</label>
-                          <input id="birth_date" type="date" />
-                        </div>
-                      </div>
-
-                      <div class="row" style="margin-top:10px;">
-                        <div class="col">
-                          <label>Edad *</label>
-                          <input id="age" type="number" min="0" />
-                        </div>
-
-                        <div class="col">
-                          <label>Género *</label>
-                          <select id="gender" class="select">
-                            <option value="">-- Seleccionar --</option>
-                            <option value="Masculino">Masculino</option>
-                            <option value="Femenino">Femenino</option>
-                          </select>
-                        </div>
-
-                        <div class="col">
-                          <label>Cargo en la iglesia</label>
-                          <input id="church_role" />
-                        </div>
-                      </div>
-
-                      <div class="row" style="margin-top:10px;">
-                        <div class="col">
-                          <label>Nombre del padre</label>
-                          <input id="father_name" />
-                        </div>
-                        <div class="col">
-                          <label>Nombre de la madre</label>
-                          <input id="mother_name" />
-                        </div>
-                        <div class="col">
-                          <label>Nombre de la congregación</label>
-                          <input id="congregation_name"/>
-                        </div>
-                      </div>
-                    </div>
+                  <div style="margin-top:10px;" class="filebox" id="photoFileBox">
+                    <label>Foto del miembro (JPG/PNG/WebP)</label>
+                    <input id="photoInput" type="file" accept="image/*" />
+                    <div class="hint" id="photoInfo">Se mostrará aquí como vista previa.</div>
                   </div>
+                </div>
 
-                  <hr class="sep" />
-
+                <div class="col">
                   <div class="row">
                     <div class="col">
-                      <label>Tiempo de conversión</label>
-                      <input id="conversion_time" placeholder="Ej: 2 años / 6 meses" />
+                      <label>Nombres *</label>
+                      <input id="first_names"  />
                     </div>
                     <div class="col">
-                      <label>Lugar bautismo/acto</label>
-                      <input id="event_place"/>
+                      <label>Apellidos *</label>
+                      <input id="last_names" />
+                    </div>
+                    <div class="col">
+                      <label>Identificación *</label>
+                      <input id="identification" inputmode="numeric" pattern="[0-9]*" autocomplete="off" />
                     </div>
                   </div>
 
                   <div class="row" style="margin-top:10px;">
                     <div class="col">
-                      <label>Fecha del bautismo</label>
-                      <input id="baptism_date" type="date" />
+                      <label>Dirección</label>
+                      <input id="address" />
                     </div>
                     <div class="col">
-                      <label>Fecha recepción Espíritu Santo</label>
-                      <input id="holy_spirit_date" type="date" />
+                      <label>Ciudad</label>
+                      <input id="city" />
                     </div>
                     <div class="col">
-                      <label>Pastor oficiante</label>
-                      <input id="officiant_pastor" />
+                      <label>Fecha de nacimiento</label>
+                      <input id="birth_date" type="date" />
                     </div>
                   </div>
 
                   <div class="row" style="margin-top:10px;">
                     <div class="col">
-                      <label>Fecha membresía en la congregación</label>
-                      <input id="membership_date" type="date" />
+                      <label>Edad *</label>
+                      <input id="age" type="number" min="0" />
                     </div>
+
                     <div class="col">
-                      <label>Tiempo de membresía</label>
-                      <input id="membership_time" placeholder="Ej: 1 año / 4 meses" />
+                      <label>Género *</label>
+                      <select id="gender" class="select">
+                        <option value="">-- Seleccionar --</option>
+                        <option value="Masculino">Masculino</option>
+                        <option value="Femenino">Femenino</option>
+                      </select>
                     </div>
+
                     <div class="col">
-                      <label>Lugar de procedencia</label>
-                      <input id="origin_place" />
+                      <label>Cargo en la iglesia</label>
+                      <input id="church_role" />
                     </div>
                   </div>
 
-                  <div class="row" style="margin-top:10px;align-items:center;">
+                  <div class="row" style="margin-top:10px;">
                     <div class="col">
-                      <label>¿Menos de 6 meses en la congregación?</label>
-                      <input id="less_than_6_months" type="checkbox" />
-                      <div class="hint">Activa si el miembro lleva menos de 6 meses.</div>
+                      <label>Nombre del padre</label>
+                      <input id="father_name" />
                     </div>
-
                     <div class="col">
-                      <label>Simpatizante</label>
-                      <input id="is_sympathizer" type="checkbox" />
-                      <div class="hint">Activa si la persona es simpatizante.</div>
+                      <label>Nombre de la madre</label>
+                      <input id="mother_name" />
                     </div>
-
                     <div class="col">
-                      <!-- ✅ Se eliminó todo el bloque del documento de identidad -->
-                      <div class="hint muted"> </div>
+                      <label>Nombre de la congregación</label>
+                      <input id="congregation_name"/>
                     </div>
                   </div>
-
-                  <div style="margin-top:10px;">
-                    <label>Observaciones</label>
-                    <textarea id="observations" placeholder="Notas adicionales..."></textarea>
-                  </div>
-
                 </div>
               </div>
-            </div>
 
+              <hr class="sep" />
+
+              <div class="row">
+                <div class="col">
+                  <label>Tiempo de conversión</label>
+                  <input id="conversion_time" placeholder="Ej: 2 años / 6 meses" />
+                </div>
+                <div class="col">
+                  <label>Lugar bautismo/acto</label>
+                  <input id="event_place"/>
+                </div>
+              </div>
+
+              <div class="row" style="margin-top:10px;">
+                <div class="col">
+                  <label>Fecha del bautismo</label>
+                  <input id="baptism_date" type="date" />
+                </div>
+                <div class="col">
+                  <label>Fecha recepción Espíritu Santo</label>
+                  <input id="holy_spirit_date" type="date" />
+                </div>
+                <div class="col">
+                  <label>Pastor oficiante</label>
+                  <input id="officiant_pastor" />
+                </div>
+              </div>
+
+              <div class="row" style="margin-top:10px;">
+                <div class="col">
+                  <label>Fecha membresía en la congregación</label>
+                  <input id="membership_date" type="date" />
+                </div>
+                <div class="col">
+                  <label>Tiempo de membresía</label>
+                  <input id="membership_time" placeholder="Ej: 1 año / 4 meses" />
+                </div>
+                <div class="col">
+                  <label>Lugar de procedencia</label>
+                  <input id="origin_place" />
+                </div>
+              </div>
+
+              <div class="row" style="margin-top:10px;align-items:center;">
+                <div class="col">
+                  <label>¿Menos de 6 meses en la congregación?</label>
+                  <input id="less_than_6_months" type="checkbox" />
+                  <div class="hint">Activa si el miembro lleva menos de 6 meses.</div>
+                </div>
+
+                <div class="col">
+                  <label>Simpatizante</label>
+                  <input id="is_sympathizer" type="checkbox" />
+                  <div class="hint">Activa si la persona es simpatizante.</div>
+                </div>
+
+                <div class="col">
+                  <!-- ✅ Se eliminó todo el bloque del documento de identidad -->
+                  <div class="hint muted"> </div>
+                </div>
+              </div>
+
+              <div style="margin-top:10px;">
+                <label>Observaciones</label>
+                <textarea id="observations" placeholder="Notas adicionales..."></textarea>
+              </div>
+
+            </div>
           </div>
+        </div>
+
+      </div>
+    </div>
+  `);
+
+  const $ = (id) => {
+    const clean = String(id).startsWith("#") ? String(id).slice(1) : String(id);
+    return node.querySelector("#" + clean);
+  };
+
+  // ✅ Identificación: solo números (NO afecta nada más)
+  const idInput = $("#identification");
+  if (idInput){
+    const onlyDigits = () => {
+      const v = idInput.value || "";
+      const cleaned = v.replace(/\D+/g, "");
+      if (v !== cleaned) idInput.value = cleaned;
+    };
+    idInput.addEventListener("input", onlyDigits);
+    idInput.addEventListener("paste", () => setTimeout(onlyDigits, 0));
+  }
+
+  // keep category
+  const catSel = $("#categoryFilter");
+  if (catSel) catSel.value = state.category || "todo";
+
+  function setFormReadonly(isReadonly){
+    const panel = $("#statusBadge")?.closest(".panel");
+    if (panel) panel.classList.toggle("view-mode", isReadonly);
+
+    const textIds = [
+      "first_names","last_names","identification","address","city",
+      "father_name","mother_name","congregation_name",
+      "conversion_time","event_place","officiant_pastor",
+      "membership_time","origin_place","observations",
+      "age","church_role"
+    ];
+    const dateIds = ["birth_date","baptism_date","holy_spirit_date","membership_date"];
+
+    textIds.forEach(id=>{
+      const e = $(id); if (!e) return;
+      e.readOnly = isReadonly;
+      e.disabled = false;
+    });
+    dateIds.forEach(id=>{
+      const e = $(id); if (!e) return;
+      e.disabled = isReadonly;
+      e.classList.toggle("no-interaction", isReadonly);
+    });
+
+    const chk = $("#less_than_6_months"); if (chk) chk.disabled = isReadonly;
+    const sym = $("#is_sympathizer"); if (sym) sym.disabled = isReadonly;
+    const genderSel = $("#gender"); if (genderSel) genderSel.disabled = isReadonly;
+
+    const photoBox = $("#photoFileBox");
+    if (photoBox) photoBox.style.display = isReadonly ? "none" : "";
+
+    if ($("#photoInput")) $("#photoInput").disabled = isReadonly;
+
+    node.querySelector("#btnSave").style.display = isReadonly ? "none" : "";
+    $("#statusBadge").textContent = isReadonly ? "Solo lectura" : "Sin guardar";
+  }
+
+  function syncActionButtons(){
+    const isViewing = state.viewMode === "view";
+    const hasSelected = !!state.selectedId;
+    node.querySelector("#btnEdit").style.display = (isViewing && hasSelected) ? "" : "none";
+    node.querySelector("#btnDelete").style.display = (isViewing && hasSelected) ? "" : "none";
+    node.querySelector("#btnSave").style.display = (state.viewMode === "edit") ? "" : "none";
+  }
+
+  function renderPhoto(url){
+    const box = $("#photoBox");
+    box.innerHTML = "";
+    if (!url){
+      box.appendChild(el(`<div class="small">Sin foto</div>`));
+      return;
+    }
+    const img = document.createElement("img");
+    img.src = url;
+    img.alt = "Foto miembro";
+    box.appendChild(img);
+  }
+
+  function fillForm(m){
+    $("#first_names").value = m.first_names || "";
+    $("#last_names").value = m.last_names || "";
+    $("#identification").value = m.identification || "";
+    $("#address").value = m.address || "";
+    $("#city").value = m.city || "";
+    $("#birth_date").value = m.birth_date || "";
+    $("#father_name").value = m.father_name || "";
+    $("#mother_name").value = m.mother_name || "";
+    $("#congregation_name").value = m.congregation_name || "";
+    $("#folio_number").value = m.folio_number || "";
+    $("#conversion_time").value = m.conversion_time || "";
+    $("#baptism_date").value = m.baptism_date || "";
+    $("#holy_spirit_date").value = m.holy_spirit_date || "";
+    $("#event_place").value = m.event_place || "";
+    $("#officiant_pastor").value = m.officiant_pastor || "";
+    $("#membership_date").value = m.membership_date || "";
+    $("#membership_time").value = m.membership_time || "";
+    $("#origin_place").value = m.origin_place || "";
+    $("#less_than_6_months").checked = !!m.less_than_6_months;
+    $("#is_sympathizer").checked = !!m.is_sympathizer;
+    $("#observations").value = m.observations || "";
+    $("#age").value = (m.age ?? "") === null ? "" : (m.age ?? "");
+    $("#church_role").value = m.church_role || "";
+    $("#gender").value = m.gender || "";
+
+    renderPhoto(m.photo_preview_url || m.photo_url || "");
+  }
+
+  function readForm(){
+    const m = state.memberDraft;
+    m.first_names = $("#first_names").value.trim();
+    m.last_names = $("#last_names").value.trim();
+    m.identification = $("#identification").value.trim();
+    m.address = $("#address").value.trim();
+    m.city = $("#city").value.trim();
+    m.birth_date = $("#birth_date").value || "";
+    m.father_name = $("#father_name").value.trim();
+    m.mother_name = $("#mother_name").value.trim();
+    m.congregation_name = $("#congregation_name").value.trim();
+    m.folio_number = ($("#folio_number").value || "").trim();
+    m.conversion_time = $("#conversion_time").value.trim();
+    m.baptism_date = $("#baptism_date").value || "";
+    m.holy_spirit_date = $("#holy_spirit_date").value || "";
+    m.event_place = $("#event_place").value.trim();
+    m.officiant_pastor = $("#officiant_pastor").value.trim();
+    m.membership_date = $("#membership_date").value || "";
+    m.membership_time = $("#membership_time").value.trim();
+    m.origin_place = $("#origin_place").value.trim();
+    m.less_than_6_months = $("#less_than_6_months").checked;
+    m.is_sympathizer = $("#is_sympathizer").checked;
+    m.observations = $("#observations").value.trim();
+
+    const ageRaw = ($("#age").value || "").trim();
+    m.age = ageRaw === "" ? null : Number(ageRaw);
+
+    m.church_role = $("#church_role").value.trim();
+    m.gender = $("#gender").value || "";
+
+    return m;
+  }
+
+  async function updateMemberCount(){
+    const badge = $("#memberCount");
+    if (!badge) return;
+    try{
+      const total = await countMembers(getCategoriaActual());
+      badge.textContent = String(total ?? 0);
+    } catch(e){
+      badge.textContent = "--";
+      console.log("countMembers error:", e);
+    }
+  }
+
+  function getCategoriaActual(){
+    const v = ($("#categoryFilter")?.value || state.category || "todo");
+    return String(v).toLowerCase();
+  }
+
+  // Suggestions
+  $("#suggestions")?.addEventListener("mousedown", (e)=>e.preventDefault());
+  $("#suggestions")?.addEventListener("pointerdown", (e)=>e.preventDefault());
+
+  function renderSuggestions(items){
+    const box = $("#suggestions");
+    if (!box) return;
+    if (!items || items.length === 0){
+      box.style.display = "none";
+      box.innerHTML = "";
+      return;
+    }
+    box.style.display = "block";
+    box.innerHTML = "";
+
+    items.forEach((m)=>{
+      const item = el(`
+        <div class="item">
+          <div class="left">
+            <div style="font-weight:700;">${(m.first_names||"")} ${(m.last_names||"")}</div>
+            <div class="small">Doc: ${(m.identification||"")} · Ciudad: ${(m.city||"")}</div>
+          </div>
+          <div class="right">Seleccionar</div>
         </div>
       `);
 
-      const $ = (id) => {
-        const clean = String(id).startsWith("#") ? String(id).slice(1) : String(id);
-        return node.querySelector("#" + clean);
+      const onPick = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        state.category = getCategoriaActual();
+
+        state.memberDraft = cloneMemberSafe(m);
+        state.memberDraft.photo_preview_url = m.photo_url || "";
+        state.selectedId = m.id || null;
+        state.viewMode = "view";
+
+        renderSuggestions([]);
+        render();
       };
 
-      // keep category
-      const catSel = $("#categoryFilter");
-      if (catSel) catSel.value = state.category || "todo";
+      item.addEventListener("pointerdown", onPick);
+      item.addEventListener("mousedown", onPick);
 
-      function setFormReadonly(isReadonly){
-        const panel = $("#statusBadge")?.closest(".panel");
-        if (panel) panel.classList.toggle("view-mode", isReadonly);
+      box.appendChild(item);
+    });
+  }
 
-        const textIds = [
-          "first_names","last_names","identification","address","city",
-          "father_name","mother_name","congregation_name",
-          "conversion_time","event_place","officiant_pastor",
-          "membership_time","origin_place","observations",
-          "age","church_role"
-        ];
-        const dateIds = ["birth_date","baptism_date","holy_spirit_date","membership_date"];
+  function debounce(fn, wait=350){
+    let t=null;
+    return (...args)=>{
+      clearTimeout(t);
+      t=setTimeout(()=>fn(...args), wait);
+    };
+  }
 
-        textIds.forEach(id=>{
-          const e = $(id); if (!e) return;
-          e.readOnly = isReadonly;
-          e.disabled = false;
-        });
-        dateIds.forEach(id=>{
-          const e = $(id); if (!e) return;
-          e.disabled = isReadonly;
-          e.classList.toggle("no-interaction", isReadonly);
-        });
+  const autoSearch = debounce(async ()=>{
+    try{
+      const q = ($("#searchBox").value || "").trim();
+      if (!q || q.length < 2){
+        renderSuggestions([]);
+        return;
+      }
+      const items = await searchMembers(q);
+      renderSuggestions(items);
+    } catch(e){
+      console.log("autoSearch error:", e);
+    }
+  }, 350);
 
-        const chk = $("#less_than_6_months"); if (chk) chk.disabled = isReadonly;
-        const sym = $("#is_sympathizer"); if (sym) sym.disabled = isReadonly;
-        const genderSel = $("#gender"); if (genderSel) genderSel.disabled = isReadonly;
+  // File inputs
+  $("#photoInput").addEventListener("change", ()=>{
+    const file = $("#photoInput").files && $("#photoInput").files[0] ? $("#photoInput").files[0] : null;
+    state.memberDraft.photo_file = file;
 
-        const photoBox = $("#photoFileBox");
-        if (photoBox) photoBox.style.display = isReadonly ? "none" : "";
+    if (!file){
+      state.memberDraft.photo_preview_url = "";
+      renderPhoto("");
+      $("#photoInfo").textContent = "Se mostrará aquí como vista previa.";
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    state.memberDraft.photo_preview_url = url;
+    renderPhoto(url);
+    $("#photoInfo").textContent = `${file.name} · vista previa lista`;
+    $("#statusBadge").textContent = "Cambios sin guardar";
+  });
 
-        if ($("#photoInput")) $("#photoInput").disabled = isReadonly;
+  [
+    "first_names","last_names","identification","address","city","birth_date",
+    "father_name","mother_name","congregation_name","conversion_time",
+    "baptism_date","holy_spirit_date","event_place","officiant_pastor",
+    "membership_date","membership_time","origin_place","less_than_6_months","is_sympathizer","observations",
+    "age","gender","church_role"
+  ].forEach(id=>{
+    const e = $(id);
+    if (!e) return;
+    const markDirty = ()=> ($("#statusBadge").textContent = "Cambios sin guardar");
+    e.addEventListener("input", markDirty);
+    e.addEventListener("change", markDirty);
+  });
 
-        node.querySelector("#btnSave").style.display = isReadonly ? "none" : "";
-        $("#statusBadge").textContent = isReadonly ? "Solo lectura" : "Sin guardar";
+  // Buttons
+  $("#btnNew").addEventListener("click", ()=>{
+    state.memberDraft = blankMember();
+    state.selectedId = null;
+    state.viewMode = "edit";
+    render();
+  });
+
+  $("#btnEdit").addEventListener("click", ()=>{
+    if (!state.selectedId){
+      toast("⚠️ Selecciona un miembro primero.", "info");
+      return;
+    }
+    state.viewMode = "edit";
+    render();
+  });
+
+  $("#btnDelete").addEventListener("click", async ()=>{
+    try{
+      if (!state.selectedId){
+        toast("⚠️ Selecciona un miembro primero.", "info");
+        return;
       }
 
-      function syncActionButtons(){
-        const isViewing = state.viewMode === "view";
-        const hasSelected = !!state.selectedId;
-        node.querySelector("#btnEdit").style.display = (isViewing && hasSelected) ? "" : "none";
-        node.querySelector("#btnDelete").style.display = (isViewing && hasSelected) ? "" : "none";
-        node.querySelector("#btnSave").style.display = (state.viewMode === "edit") ? "" : "none";
+      const nombre = `${state.memberDraft?.first_names || ""} ${state.memberDraft?.last_names || ""}`.trim();
+      const ok = await confirmarHTML(
+        `¿Seguro que deseas eliminar a "${nombre || "este miembro"}"?\n\nEsta acción no se puede deshacer.`,
+        "Eliminar miembro"
+      );
+      if (!ok) return;
+
+      $("#statusBadge").textContent = "Eliminando...";
+      await deleteMember(state.selectedId);
+
+      toast("✅ Eliminado correctamente.", "success");
+
+      state.memberDraft = blankMember();
+      state.selectedId = null;
+      state.viewMode = "edit";
+      $("#statusBadge").textContent = "Sin guardar";
+
+      const sb = $("#searchBox");
+      if (sb) sb.value = "";
+      renderSuggestions([]);
+      updateMemberCount();
+
+      render();
+    } catch(e){
+      $("#statusBadge").textContent = "Error";
+      mostrarAviso("❌ Error eliminando: " + (e?.message || e), "error", "Eliminar");
+    }
+  });
+
+  $("#btnSave").addEventListener("click", async ()=>{
+    try{
+      const m = readForm();
+
+      if (!m.first_names || !m.last_names || !m.identification){
+        toast("Nombres, apellidos e identificación son obligatorios.", "info");
+        return;
       }
 
-      function renderPhoto(url){
-        const box = $("#photoBox");
-        box.innerHTML = "";
-        if (!url){
-          box.appendChild(el(`<div class="small">Sin foto</div>`));
-          return;
-        }
-        const img = document.createElement("img");
-        img.src = url;
-        img.alt = "Foto miembro";
-        box.appendChild(img);
+      const ageNum = Number(m.age);
+      if (m.age === null || !Number.isFinite(ageNum) || ageNum < 0){
+        toast("La edad es obligatoria y debe ser un número válido (>= 0).", "info");
+        return;
       }
 
-      function fillForm(m){
-        $("#first_names").value = m.first_names || "";
-        $("#last_names").value = m.last_names || "";
-        $("#identification").value = m.identification || "";
-        $("#address").value = m.address || "";
-        $("#city").value = m.city || "";
-        $("#birth_date").value = m.birth_date || "";
-        $("#father_name").value = m.father_name || "";
-        $("#mother_name").value = m.mother_name || "";
-        $("#congregation_name").value = m.congregation_name || "";
-        $("#folio_number").value = m.folio_number || "";
-        $("#conversion_time").value = m.conversion_time || "";
-        $("#baptism_date").value = m.baptism_date || "";
-        $("#holy_spirit_date").value = m.holy_spirit_date || "";
-        $("#event_place").value = m.event_place || "";
-        $("#officiant_pastor").value = m.officiant_pastor || "";
-        $("#membership_date").value = m.membership_date || "";
-        $("#membership_time").value = m.membership_time || "";
-        $("#origin_place").value = m.origin_place || "";
-        $("#less_than_6_months").checked = !!m.less_than_6_months;
-        $("#is_sympathizer").checked = !!m.is_sympathizer;
-        $("#observations").value = m.observations || "";
-        $("#age").value = (m.age ?? "") === null ? "" : (m.age ?? "");
-        $("#church_role").value = m.church_role || "";
-        $("#gender").value = m.gender || "";
-
-        renderPhoto(m.photo_preview_url || m.photo_url || "");
+      if (!m.gender){
+        toast("El género es obligatorio. Selecciona Masculino o Femenino.", "info");
+        return;
       }
 
-      function readForm(){
-        const m = state.memberDraft;
-        m.first_names = $("#first_names").value.trim();
-        m.last_names = $("#last_names").value.trim();
-        m.identification = $("#identification").value.trim();
-        m.address = $("#address").value.trim();
-        m.city = $("#city").value.trim();
-        m.birth_date = $("#birth_date").value || "";
-        m.father_name = $("#father_name").value.trim();
-        m.mother_name = $("#mother_name").value.trim();
-        m.congregation_name = $("#congregation_name").value.trim();
-        m.folio_number = ($("#folio_number").value || "").trim();
-        m.conversion_time = $("#conversion_time").value.trim();
-        m.baptism_date = $("#baptism_date").value || "";
-        m.holy_spirit_date = $("#holy_spirit_date").value || "";
-        m.event_place = $("#event_place").value.trim();
-        m.officiant_pastor = $("#officiant_pastor").value.trim();
-        m.membership_date = $("#membership_date").value || "";
-        m.membership_time = $("#membership_time").value.trim();
-        m.origin_place = $("#origin_place").value.trim();
-        m.less_than_6_months = $("#less_than_6_months").checked;
-        m.is_sympathizer = $("#is_sympathizer").checked;
-        m.observations = $("#observations").value.trim();
+      const photoFile = state.memberDraft.photo_file || null;
 
-        const ageRaw = ($("#age").value || "").trim();
-        m.age = ageRaw === "" ? null : Number(ageRaw);
+      $("#statusBadge").textContent = "Guardando...";
 
-        m.church_role = $("#church_role").value.trim();
-        m.gender = $("#gender").value || "";
-
-        return m;
+      if (state.selectedId){
+        await updateMember(state.selectedId, m, photoFile);
+        toast("✅ Cambios guardados correctamente.", "success");
+      } else {
+        await saveMember(m, photoFile);
+        toast("✅ Guardado correctamente.", "success");
       }
 
-      async function updateMemberCount(){
-        const badge = $("#memberCount");
-        if (!badge) return;
-        try{
-          const total = await countMembers(getCategoriaActual());
-          badge.textContent = String(total ?? 0);
-        } catch(e){
-          badge.textContent = "--";
-          console.log("countMembers error:", e);
-        }
-      }
+      $("#statusBadge").textContent = "Guardado";
 
-      function getCategoriaActual(){
-        const v = ($("#categoryFilter")?.value || state.category || "todo");
-        return String(v).toLowerCase();
-      }
-
-      // Suggestions
-      $("#suggestions")?.addEventListener("mousedown", (e)=>e.preventDefault());
-      $("#suggestions")?.addEventListener("pointerdown", (e)=>e.preventDefault());
-
-      function renderSuggestions(items){
-        const box = $("#suggestions");
-        if (!box) return;
-        if (!items || items.length === 0){
-          box.style.display = "none";
-          box.innerHTML = "";
-          return;
-        }
-        box.style.display = "block";
-        box.innerHTML = "";
-
-        items.forEach((m)=>{
-          const item = el(`
-            <div class="item">
-              <div class="left">
-                <div style="font-weight:700;">${(m.first_names||"")} ${(m.last_names||"")}</div>
-                <div class="small">Doc: ${(m.identification||"")} · Ciudad: ${(m.city||"")}</div>
-              </div>
-              <div class="right">Seleccionar</div>
-            </div>
-          `);
-
-          const onPick = (ev) => {
-            ev.preventDefault();
-            ev.stopPropagation();
-
-            state.category = getCategoriaActual();
-
-            state.memberDraft = cloneMemberSafe(m);
-            state.memberDraft.photo_preview_url = m.photo_url || "";
-            state.selectedId = m.id || null;
-            state.viewMode = "view";
-
-            renderSuggestions([]);
-            render();
-          };
-
-          item.addEventListener("pointerdown", onPick);
-          item.addEventListener("mousedown", onPick);
-
-          box.appendChild(item);
-        });
-      }
-
-      function debounce(fn, wait=350){
-        let t=null;
-        return (...args)=>{
-          clearTimeout(t);
-          t=setTimeout(()=>fn(...args), wait);
-        };
-      }
-
-      const autoSearch = debounce(async ()=>{
-        try{
-          const q = ($("#searchBox").value || "").trim();
-          if (!q || q.length < 2){
-            renderSuggestions([]);
-            return;
-          }
-          const items = await searchMembers(q);
-          renderSuggestions(items);
-        } catch(e){
-          console.log("autoSearch error:", e);
-        }
-      }, 350);
-
-      // File inputs
-      $("#photoInput").addEventListener("change", ()=>{
-        const file = $("#photoInput").files && $("#photoInput").files[0] ? $("#photoInput").files[0] : null;
-        state.memberDraft.photo_file = file;
-
-        if (!file){
-          state.memberDraft.photo_preview_url = "";
-          renderPhoto("");
-          $("#photoInfo").textContent = "Se mostrará aquí como vista previa.";
-          return;
-        }
-        const url = URL.createObjectURL(file);
-        state.memberDraft.photo_preview_url = url;
-        renderPhoto(url);
-        $("#photoInfo").textContent = `${file.name} · vista previa lista`;
-        $("#statusBadge").textContent = "Cambios sin guardar";
-      });
-
-      [
-        "first_names","last_names","identification","address","city","birth_date",
-        "father_name","mother_name","congregation_name","conversion_time",
-        "baptism_date","holy_spirit_date","event_place","officiant_pastor",
-        "membership_date","membership_time","origin_place","less_than_6_months","is_sympathizer","observations",
-        "age","gender","church_role"
-      ].forEach(id=>{
-        const e = $(id);
-        if (!e) return;
-        const markDirty = ()=> ($("#statusBadge").textContent = "Cambios sin guardar");
-        e.addEventListener("input", markDirty);
-        e.addEventListener("change", markDirty);
-      });
-
-      // Buttons
-      $("#btnNew").addEventListener("click", ()=>{
+      setTimeout(()=>{
         state.memberDraft = blankMember();
         state.selectedId = null;
         state.viewMode = "edit";
-        render();
-      });
 
-      $("#btnEdit").addEventListener("click", ()=>{
-        if (!state.selectedId){
-          toast("⚠️ Selecciona un miembro primero.", "info");
-          return;
-        }
-        state.viewMode = "edit";
-        render();
-      });
-
-      $("#btnDelete").addEventListener("click", async ()=>{
-        try{
-          if (!state.selectedId){
-            toast("⚠️ Selecciona un miembro primero.", "info");
-            return;
-          }
-
-          const nombre = `${state.memberDraft?.first_names || ""} ${state.memberDraft?.last_names || ""}`.trim();
-          const ok = await confirmarHTML(
-            `¿Seguro que deseas eliminar a "${nombre || "este miembro"}"?\n\nEsta acción no se puede deshacer.`,
-            "Eliminar miembro"
-          );
-          if (!ok) return;
-
-          $("#statusBadge").textContent = "Eliminando...";
-          await deleteMember(state.selectedId);
-
-          toast("✅ Eliminado correctamente.", "success");
-
-          state.memberDraft = blankMember();
-          state.selectedId = null;
-          state.viewMode = "edit";
-          $("#statusBadge").textContent = "Sin guardar";
-
-          const sb = $("#searchBox");
-          if (sb) sb.value = "";
-          renderSuggestions([]);
-          updateMemberCount();
-
-          render();
-        } catch(e){
-          $("#statusBadge").textContent = "Error";
-          mostrarAviso("❌ Error eliminando: " + (e?.message || e), "error", "Eliminar");
-        }
-      });
-
-      $("#btnSave").addEventListener("click", async ()=>{
-        try{
-          const m = readForm();
-
-          if (!m.first_names || !m.last_names || !m.identification){
-            toast("Nombres, apellidos e identificación son obligatorios.", "info");
-            return;
-          }
-
-          const ageNum = Number(m.age);
-          if (m.age === null || !Number.isFinite(ageNum) || ageNum < 0){
-            toast("La edad es obligatoria y debe ser un número válido (>= 0).", "info");
-            return;
-          }
-
-          if (!m.gender){
-            toast("El género es obligatorio. Selecciona Masculino o Femenino.", "info");
-            return;
-          }
-
-          const photoFile = state.memberDraft.photo_file || null;
-
-          $("#statusBadge").textContent = "Guardando...";
-
-          if (state.selectedId){
-            await updateMember(state.selectedId, m, photoFile);
-            toast("✅ Cambios guardados correctamente.", "success");
-          } else {
-            await saveMember(m, photoFile);
-            toast("✅ Guardado correctamente.", "success");
-          }
-
-          $("#statusBadge").textContent = "Guardado";
-
-          setTimeout(()=>{
-            state.memberDraft = blankMember();
-            state.selectedId = null;
-            state.viewMode = "edit";
-
-            const sb = $("#searchBox");
-            if (sb) sb.value = "";
-            renderSuggestions([]);
-            updateMemberCount();
-
-            render();
-          }, 600);
-
-        } catch(err){
-          $("#statusBadge").textContent = "Error";
-          const raw = String(err?.message || err || "").toLowerCase();
-          const esDuplicado =
-            raw.includes("duplicate key") ||
-            raw.includes("unique constraint") ||
-            raw.includes("violates unique") ||
-            raw.includes("23505") ||
-            raw.includes("already exists") ||
-            raw.includes("ya existe");
-
-          if (esDuplicado){
-            mostrarAviso("⚠️ Ese documento de identificación ya está registrado. Revisa la búsqueda.", "alerta", "Documento duplicado");
-          } else {
-            mostrarAviso("❌ Error guardando: " + (err?.message || err), "error", "Guardar");
-          }
-        }
-      });
-
-      $("#btnSearch").addEventListener("click", async ()=>{
-        try{
-          const q = ($("#searchBox").value || "").trim();
-          const items = await searchMembers(q);
-          renderSuggestions(items);
-        } catch(e){
-          mostrarAviso("❌ Error buscando: " + (e?.message || e), "error", "Buscar");
-        }
-      });
-
-      $("#searchBox").addEventListener("input", ()=> autoSearch());
-
-      $("#categoryFilter")?.addEventListener("change", ()=>{
-        state.category = $("#categoryFilter").value;
-        updateMemberCount();
-        const q = ($("#searchBox")?.value || "").trim();
-        if (!q){ renderSuggestions([]); return; }
-        autoSearch();
-      });
-
-      $("#searchBox").addEventListener("keydown", (e)=>{
-        if (e.key === "Enter") $("#btnSearch").click();
-        if (e.key === "Escape"){
-          renderSuggestions([]);
-          e.target.blur();
-        }
-      });
-
-      $("#searchBox").addEventListener("blur", ()=>{
-        setTimeout(()=> renderSuggestions([]), 150);
-      });
-
-      $("#btnClearSearch").addEventListener("click", ()=>{
         const sb = $("#searchBox");
-        sb.value = "";
+        if (sb) sb.value = "";
         renderSuggestions([]);
-        sb.focus();
-      });
+        updateMemberCount();
 
-      fillForm(state.memberDraft);
-      setFormReadonly(state.viewMode === "view");
-      syncActionButtons();
-      updateMemberCount();
+        render();
+      }, 600);
 
-      // Gate actions by auth
-      const enabled = !!state.auth.authed;
-      $("#btnSave").disabled = !enabled;
-      $("#btnDelete").disabled = !enabled;
-      $("#btnEdit").disabled = !enabled;
-      if (!enabled) $("#statusBadge").textContent = "Login requerido";
+    } catch(err){
+      $("#statusBadge").textContent = "Error";
+      const raw = String(err?.message || err || "").toLowerCase();
+      const esDuplicado =
+        raw.includes("duplicate key") ||
+        raw.includes("unique constraint") ||
+        raw.includes("violates unique") ||
+        raw.includes("23505") ||
+        raw.includes("already exists") ||
+        raw.includes("ya existe");
 
-      // focus
-      $("#searchBox")?.focus();
-
-      return node;
+      if (esDuplicado){
+        mostrarAviso("⚠️ Ese documento de identificación ya está registrado. Revisa la búsqueda.", "alerta", "Documento duplicado");
+      } else {
+        mostrarAviso("❌ Error guardando: " + (err?.message || err), "error", "Guardar");
+      }
     }
+  });
+
+  $("#btnSearch").addEventListener("click", async ()=>{
+    try{
+      const q = ($("#searchBox").value || "").trim();
+      const items = await searchMembers(q);
+      renderSuggestions(items);
+    } catch(e){
+      mostrarAviso("❌ Error buscando: " + (e?.message || e), "error", "Buscar");
+    }
+  });
+
+  $("#searchBox").addEventListener("input", ()=> autoSearch());
+
+  $("#categoryFilter")?.addEventListener("change", ()=>{
+    state.category = $("#categoryFilter").value;
+    updateMemberCount();
+    const q = ($("#searchBox")?.value || "").trim();
+    if (!q){ renderSuggestions([]); return; }
+    autoSearch();
+  });
+
+  $("#searchBox").addEventListener("keydown", (e)=>{
+    if (e.key === "Enter") $("#btnSearch").click();
+    if (e.key === "Escape"){
+      renderSuggestions([]);
+      e.target.blur();
+    }
+  });
+
+  $("#searchBox").addEventListener("blur", ()=>{
+    setTimeout(()=> renderSuggestions([]), 150);
+  });
+
+  $("#btnClearSearch").addEventListener("click", ()=>{
+    const sb = $("#searchBox");
+    sb.value = "";
+    renderSuggestions([]);
+    sb.focus();
+  });
+
+  fillForm(state.memberDraft);
+  setFormReadonly(state.viewMode === "view");
+  syncActionButtons();
+  updateMemberCount();
+
+  // Gate actions by auth
+  const enabled = !!state.auth.authed;
+  $("#btnSave").disabled = !enabled;
+  $("#btnDelete").disabled = !enabled;
+  $("#btnEdit").disabled = !enabled;
+  if (!enabled) $("#statusBadge").textContent = "Login requerido";
+
+  // focus
+  $("#searchBox")?.focus();
+
+  return node;
+}
+
 
 function render(){
   app.innerHTML = "";
