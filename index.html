@@ -450,45 +450,58 @@ async function getAuthedUser(){
     function safeName(name){ return String(name||"").replace(/[^\w.\-]+/g,"_").slice(0,120); }
 
 async function uploadFile(bucket, file, prefix){
-  try{
-    if (!file) return { path:null, url:null };
+  if (!file) return { path:null, url:null };
 
-    // Nombre/route seguro
-    const ext = (String(file.name||"").split(".").pop() || "bin").toLowerCase();
-    const fileName = `${prefix}_${Date.now()}_${safeName(file.name)}`;
-    const storagePath = `${prefix}/${fileName}.${ext}`;
-
-    // ✅ Upload (incluye contentType + mensaje de error detallado)
-    const { error: upErr } = await supabaseStorage.storage
-      .from(bucket)
-      .upload(storagePath, file, {
-        upsert: true,
-        contentType: file.type || "application/octet-stream",
-      });
-
-    if (upErr){
-      throw new Error(
-        "Upload error: " + upErr.message +
-        "\nBucket: " + bucket +
-        "\nArchivo: " + (file?.name || "") +
-        "\nTipo: " + (file?.type || "sin type") +
-        "\nRuta: " + storagePath
-      );
-    }
-
-    // ✅ URL pública (si el bucket es public). Si el bucket es private, esto igual devuelve url,
-    // pero no será accesible sin signed URL (eso es configuración de Supabase, no del código).
-    const { data } = supabaseStorage.storage.from(bucket).getPublicUrl(storagePath);
-
-    return { path: storagePath, url: data?.publicUrl || null };
-  } catch (e){
-    // Log para depurar desde consola del celular
-    console.log("uploadFile error:", e);
-
-    // Re-lanza para que tu UI muestre el error en mostrarAviso(...)
-    throw e;
+  // ✅ Validaciones rápidas (móvil a veces entrega size 0)
+  const size = Number(file.size || 0);
+  if (!Number.isFinite(size) || size <= 0){
+    throw new Error(
+      "El archivo seleccionado parece vacío (size=0).\n" +
+      "En Android/iOS esto pasa si eliges desde Drive/Archivos con permisos restringidos.\n\n" +
+      "Solución: vuelve a elegir el archivo, o primero descárgalo al teléfono y luego selecciónalo."
+    );
   }
+
+  const ext = (String(file.name||"").split(".").pop() || "bin").toLowerCase();
+  const fileName = `${prefix}_${Date.now()}_${safeName(file.name)}`;
+  const storagePath = `${prefix}/${fileName}.${ext}`;
+
+  // ✅ En móvil: convertir a Blob desde ArrayBuffer (más estable que subir File directo)
+  let bodyBlob;
+  try{
+    const ab = await file.arrayBuffer();
+    bodyBlob = new Blob([ab], { type: file.type || "application/octet-stream" });
+  } catch (e){
+    throw new Error(
+      "No se pudo leer el archivo en el celular (arrayBuffer falló).\n" +
+      "Intenta seleccionar el archivo desde 'Archivos' local o descárgalo primero.\n\n" +
+      (e?.message || e)
+    );
+  }
+
+  // ✅ Sube el Blob
+  const { error: upErr } = await supabaseStorage.storage
+    .from(bucket)
+    .upload(storagePath, bodyBlob, {
+      upsert: true,
+      contentType: file.type || "application/octet-stream",
+    });
+
+  if (upErr){
+    throw new Error(
+      "Upload error: " + upErr.message +
+      "\nBucket: " + bucket +
+      "\nArchivo: " + (file?.name || "") +
+      "\nTipo: " + (file?.type || "sin type") +
+      "\nSize: " + size +
+      "\nRuta: " + storagePath
+    );
+  }
+
+  const { data } = supabaseStorage.storage.from(bucket).getPublicUrl(storagePath);
+  return { path: storagePath, url: data?.publicUrl || null };
 }
+
 
 
     // ===== Members API (misma lógica que tu preload) =====
@@ -1445,23 +1458,30 @@ async function uploadFile(bucket, file, prefix){
             render();
           }, 600);
 
-        } catch(err){
-          $("#statusBadge").textContent = "Error";
-          const raw = String(err?.message || err || "").toLowerCase();
-          const esDuplicado =
-            raw.includes("duplicate key") ||
-            raw.includes("unique constraint") ||
-            raw.includes("violates unique") ||
-            raw.includes("23505") ||
-            raw.includes("already exists") ||
-            raw.includes("ya existe");
+       } catch(err){
+  $("#statusBadge").textContent = "Error";
+  const raw = String(err?.message || err || "").toLowerCase();
+  const esDuplicado =
+    raw.includes("duplicate key") ||
+    raw.includes("unique constraint") ||
+    raw.includes("violates unique") ||
+    raw.includes("23505") ||
+    raw.includes("already exists") ||
+    raw.includes("ya existe");
 
-          if (esDuplicado){
-            mostrarAviso("⚠️ Ese documento de identificación ya está registrado. Revisa la búsqueda.", "alerta", "Documento duplicado");
-          } else {
-            mostrarAviso("❌ Error guardando: " + (err?.message || err), "error", "Guardar");
-          }
-        }
+  if (esDuplicado){
+    mostrarAviso("⚠️ Ese documento de identificación ya está registrado. Revisa la búsqueda.", "alerta", "Documento duplicado");
+  } else {
+    mostrarAviso("❌ Error guardando: " + (err?.message || err), "error", "Guardar");
+  }
+
+  // ✅ Si el doc falló, limpiarlo para permitir guardar de nuevo sin reiniciar
+  state.memberDraft.id_document_file = null;
+  const docInput = $("#id_document");
+  if (docInput) docInput.value = "";
+  renderDocInfo(null);
+}
+
       });
 
       $("#btnSearch").addEventListener("click", async ()=>{
