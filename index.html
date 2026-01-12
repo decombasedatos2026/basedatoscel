@@ -275,6 +275,33 @@
       #categoryFilter{min-width:0 !important; width: 100% !important;}
       #memberCountBadge{width:100%; justify-content:space-between;}
     }
+
+
+
+/* ✅ Barra sticky (categorías + contador + botones) */
+:root{
+  --header-offset: 72px; /* fallback; JS lo ajusta con el alto real del header */
+}
+
+.toolbar-sticky{
+  position: sticky;
+  top: var(--header-offset);
+  z-index: 4;
+
+  /* fondo para que no se transparente al pasar contenido */
+  background: rgba(18,26,51,.95);
+  backdrop-filter: blur(12px);
+
+  /* que se vea integrado con la card sin cambiar diseño */
+  margin: -16px -16px 14px;   /* pega a los bordes internos de la card */
+  padding: 16px 16px 0;       /* recupera padding original */
+  border-bottom: 1px solid var(--border);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+}
+
+
+    
   </style>
 </head>
 
@@ -752,43 +779,46 @@
         <div class="container">
           <div class="card">
 
-            <div class="row" style="align-items:center;justify-content:space-between;">
-              <div style="min-width:0;">
-                <h3 style="margin:0;">Módulo: Miembros</h3>
+      <div class="toolbar-sticky">
+  <div class="row" style="align-items:center;justify-content:space-between;">
+    <div style="min-width:0;">
+      <h3 style="margin:0;">Módulo: Miembros</h3>
 
-                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; max-width:100%;">
-                  <div class="small">Búsqueda y registro de miembros</div>
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; max-width:100%;">
+        <div class="small">Búsqueda y registro de miembros</div>
 
-                  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; width:100%; max-width:560px;">
-                    <span class="small">Categorías</span>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; width:100%; max-width:560px;">
+          <span class="small">Categorías</span>
 
-                    <select id="categoryFilter" class="select" style="min-width:240px; width:auto; flex:1 1 240px;">
-                      <option value="todo">Todo</option>
-                      <option value="damas">Damas Dorcas</option>
-                      <option value="caballeros">Caballeros</option>
-                      <option value="jovenes">Jóvenes</option>
-                      <option value="adolescentes">Adolescentes</option>
-                      <option value="senoritas">Señoritas</option>
-                      <option value="ninos">Niños</option>
-                      <option value="simpatizantes">Simpatizantes</option>
-                    </select>
+          <select id="categoryFilter" class="select" style="min-width:240px; width:auto; flex:1 1 240px;">
+            <option value="todo">Todo</option>
+            <option value="damas">Damas Dorcas</option>
+            <option value="caballeros">Caballeros</option>
+            <option value="jovenes">Jóvenes</option>
+            <option value="adolescentes">Adolescentes</option>
+            <option value="senoritas">Señoritas</option>
+            <option value="ninos">Niños</option>
+            <option value="simpatizantes">Simpatizantes</option>
+          </select>
 
-                    <span class="badge count-badge" id="memberCountBadge" style="flex:1 1 180px;">
-                      Miembros: <b id="memberCount" class="count-number">0</b>
-                    </span>
-                  </div>
-                </div>
-              </div>
+          <span class="badge count-badge" id="memberCountBadge" style="flex:1 1 180px;">
+            Miembros: <b id="memberCount" class="count-number">0</b>
+          </span>
+        </div>
+      </div>
+    </div>
 
-              <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                <button class="btn ok" id="btnNew">+ Nuevo</button>
-                <button class="btn edit" id="btnEdit">Editar</button>
-                <button class="btn danger" id="btnDelete">Eliminar</button>
-                <button class="btn primary" id="btnSave">Guardar</button>
-              </div>
-            </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn ok" id="btnNew">+ Nuevo</button>
+      <button class="btn edit" id="btnEdit">Editar</button>
+      <button class="btn danger" id="btnDelete">Eliminar</button>
+      <button class="btn primary" id="btnSave">Guardar</button>
+    </div>
+  </div>
 
-            <hr class="sep" />
+  <hr class="sep" />
+</div>
+
 
             <div class="panel" style="margin-bottom:14px; position:relative;">
               <label>Buscador (Nombre/Apellido o Identificación)</label>
@@ -844,7 +874,7 @@
                         </div>
                         <div class="col">
                           <label>Identificación *</label>
-                          <input id="identification" placeholder="Documento" />
+                          <input id="identification"  />
                         </div>
                       </div>
 
@@ -1400,11 +1430,18 @@
       return node;
     }
 
-    function render(){
-      app.innerHTML = "";
-      app.appendChild(renderHeader());
-      app.appendChild(viewMiembros());
-    }
+function render(){
+  app.innerHTML = "";
+  const header = renderHeader();
+  app.appendChild(header);
+
+  // ✅ calcula el alto real del encabezado y ajusta el sticky debajo
+  const h = Math.ceil(header.getBoundingClientRect().height);
+  document.documentElement.style.setProperty("--header-offset", (h + 8) + "px");
+
+  app.appendChild(viewMiembros());
+}
+
 
     // ===== Boot: handle session, allowed emails gate =====
     async function bootstrap(maybeUser = null){
