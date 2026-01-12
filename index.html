@@ -488,42 +488,71 @@ async function uploadFile(bucket, file, prefix){
 
   // ✅ Documentos: subida resumible (TUS) con JWT real
 // ✅ Para documentos en móvil: usar subida resumible (TUS)
+// ✅ Documentos: 1) intentar subida normal (más estable en móvil). 2) fallback a TUS si falla.
 if (bucket === "member-docs"){
+
+  // 1) INTENTO #1: subida normal con el cliente autenticado (supabase)
+  try{
+    const { data: sdata } = await supabase.auth.getSession();
+    const accessToken = sdata?.session?.access_token;
+    if (!accessToken){
+      throw new Error("No hay sesión activa (access_token). Cierra sesión e inicia de nuevo.");
+    }
+
+    // Timeout “duro” para evitar que se quede pegado sin feedback
+    await withTimeout(
+      supabase.storage
+        .from(bucket)
+        .upload(storagePath, file, {
+          upsert: true,
+          contentType: file.type || "application/octet-stream",
+          cacheControl: "3600",
+        }),
+      3 * 60 * 1000,
+      "Subida de documento"
+    );
+
+    // Si llegó aquí, subió OK
+    const { data } = supabase.storage.from(bucket).getPublicUrl(storagePath);
+    return { path: storagePath, url: data?.publicUrl || null };
+
+  } catch(e){
+    console.log("[DOC] upload normal falló, intento TUS...", e);
+    // seguimos al fallback TUS
+  }
+
+  // 2) FALLBACK: subida resumible (TUS)
   if (!window.tus || !window.tus.Upload){
     throw new Error("No se cargó tus-js-client (tus.min.js). Revisa el <script> de tus.");
   }
 
-  // ✅ JWT real del usuario (NO anon key)
   const { data: sdata } = await supabase.auth.getSession();
   const accessToken = sdata?.session?.access_token;
   if (!accessToken){
     throw new Error("No hay sesión activa (access_token). Cierra sesión e inicia de nuevo.");
   }
 
-  // ✅ Asegurar que tus reciba un Blob “simple” (algunos pickers móviles dan File raro)
+  // Asegurar blob simple
   let uploadBody = file;
   try{
-    // si esto falla, igual seguimos con `file`
     const ab = await file.arrayBuffer();
     uploadBody = new Blob([ab], { type: file.type || "application/octet-stream" });
-    // conserva nombre para metadata
     uploadBody.name = file.name || "documento";
   } catch {}
 
   await new Promise((resolve, reject) => {
     const endpoint = `${SUPABASE_URL}/storage/v1/upload/resumable`;
 
-    let lastUploaded = 0;
     let lastProgressAt = Date.now();
-
-    // ✅ si no avanza en 25s, abortar y dar error (evita “colgado infinito”)
     const stallMs = 25000;
-    const hardMs  = 12 * 60 * 1000; // 12 min máximo
+    const hardMs  = 12 * 60 * 1000;
+
+    let upload; // para poder abortar en timers
 
     const stallTimer = setInterval(() => {
       const now = Date.now();
       if ((now - lastProgressAt) > stallMs){
-        try { upload.abort(); } catch {}
+        try { upload?.abort(); } catch {}
         clearInterval(stallTimer);
         clearTimeout(hardTimer);
         reject(new Error("La subida se quedó sin progreso (móvil). Reintenta con buena señal o Wi-Fi."));
@@ -531,19 +560,17 @@ if (bucket === "member-docs"){
     }, 3000);
 
     const hardTimer = setTimeout(() => {
-      try { upload.abort(); } catch {}
+      try { upload?.abort(); } catch {}
       clearInterval(stallTimer);
       reject(new Error("La subida tardó demasiado (timeout). Intenta de nuevo."));
     }, hardMs);
 
-    const upload = new window.tus.Upload(uploadBody, {
+    upload = new window.tus.Upload(uploadBody, {
       endpoint,
-      chunkSize: 2 * 1024 * 1024, // ✅ más pequeño = más estable en móvil (2MB)
+      chunkSize: 2 * 1024 * 1024,
       retryDelays: [0, 1000, 3000, 5000, 10000, 20000, 30000],
       headers: {
-        // ✅ pon ambos por compatibilidad (algunos proxies móviles son raros)
         Authorization: `Bearer ${accessToken}`,
-        authorization: `Bearer ${accessToken}`,
         apikey: SUPABASE_ANON_KEY,
         "x-upsert": "true",
       },
@@ -554,37 +581,17 @@ if (bucket === "member-docs"){
         cacheControl: "3600",
         filename: file.name || "documento",
       },
-
-
-            onAfterResponse: (req, res) => {
-        const status = res?.getStatus ? res.getStatus() : null;
-
-        // Si Supabase devuelve 401/403/404/409 etc, forzamos error con mensaje útil
-        if (status && status >= 400) {
-          const body = res?.getBody ? res.getBody() : "";
-          console.log("[TUS] afterResponse error:", status, body);
-
-          // Esto hace que TUS dispare onError
-          throw new Error(`Servidor respondió ${status}: ${String(body).slice(0, 250)}`);
-        }
-      },
-
-
       onError: (error) => {
         clearInterval(stallTimer);
         clearTimeout(hardTimer);
         reject(new Error("Upload error (resumable): " + (error?.message || error)));
       },
-
       onProgress: (bytesUploaded, bytesTotal) => {
         lastProgressAt = Date.now();
-        lastUploaded = bytesUploaded;
-
         const pct = bytesTotal ? Math.floor((bytesUploaded / bytesTotal) * 100) : 0;
         const badge = document.getElementById("statusBadge");
         if (badge) badge.textContent = `Subiendo documento... ${pct}%`;
       },
-
       onSuccess: () => {
         clearInterval(stallTimer);
         clearTimeout(hardTimer);
@@ -592,15 +599,14 @@ if (bucket === "member-docs"){
       },
     });
 
-    // ✅ Debug útil (si quieres ver en consola móvil)
     console.log("[TUS] start", { endpoint, bucket, storagePath, size: file.size, type: file.type });
-
     upload.start();
   });
 
   const { data } = supabase.storage.from(bucket).getPublicUrl(storagePath);
   return { path: storagePath, url: data?.publicUrl || null };
 }
+
 
 
   // ✅ Fotos: subida normal como ya te funciona
@@ -1146,7 +1152,8 @@ if (bucket === "member-docs"){
                     <div class="col">
                       <div class="filebox" id="docFileBox">
                         <label>Documento de identificación (PDF/JPG/PNG/otros)</label>
-                        <input id="id_document" type="file" />
+                  <input id="id_document" type="file" accept=".pdf,image/*" />
+
                         <div class="hint" id="docInfo">Ningún archivo seleccionado.</div>
                       </div>
 
