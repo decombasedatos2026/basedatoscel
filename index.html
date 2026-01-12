@@ -722,6 +722,41 @@ async function requireAuth({ silent = false } = {}){
       return { path: storagePath, url: data?.publicUrl || null };
     }
 
+
+    
+function looksLikeAuthError(err){
+  const msg = String(err?.message || err || "").toLowerCase();
+  return (
+    msg.includes("jwt") ||
+    msg.includes("token") ||
+    msg.includes("expired") ||
+    msg.includes("invalid") ||
+    msg.includes("not authenticated") ||
+    msg.includes("permission denied") ||
+    msg.includes("row level security") ||
+    msg.includes("rls") ||
+    msg.includes("401") ||
+    msg.includes("403")
+  );
+}
+
+async function withAuthRetry(fn){
+  try{
+    return await fn();
+  } catch(e){
+    if (!looksLikeAuthError(e)) throw e;
+
+    // ✅ intenta recuperar sesión silenciosamente y reintenta una vez
+    const ok = await requireAuth({ silent: true });
+    if (!ok) throw e;
+
+    return await fn();
+  }
+}
+
+
+
+    
     // ===== Members API (misma lógica que tu preload) =====
     async function searchMembers(query){
       const q = String(query||"").trim();
@@ -1480,10 +1515,16 @@ function viewMiembros(){
         renderSuggestions([]);
         return;
       }
-      const items = await searchMembers(q);
+      const items = await withAuthRetry(() => searchMembers(q));
+
       renderSuggestions(items);
     } catch(e){
-      console.log("autoSearch error:", e);
+    console.log("autoSearch error:", e);
+if (looksLikeAuthError(e)){
+  $("#statusBadge").textContent = "Verificando sesión...";
+  handleAppResume(); // intenta recuperar y re-habilitar
+}
+
     }
   }, 350);
 
@@ -1670,7 +1711,8 @@ $("#btnSave").addEventListener("click", async ()=>{
   $("#btnSearch").addEventListener("click", async ()=>{
     try{
       const q = ($("#searchBox").value || "").trim();
-      const items = await searchMembers(q);
+     const items = await withAuthRetry(() => searchMembers(q));
+
       renderSuggestions(items);
     } catch(e){
       mostrarAviso("❌ Error buscando: " + (e?.message || e), "error", "Buscar");
@@ -1741,26 +1783,67 @@ function render(){
 }
 
 
+
+let __resumeLock = false;
+let __lastResumeAt = 0;
+
+async function handleAppResume(){
+  const now = Date.now();
+  if (__resumeLock) return;
+  if (now - __lastResumeAt < 1200) return; // anti-spam
+  __lastResumeAt = now;
+
+  __resumeLock = true;
+  try{
+    // ✅ Reactiva el auto refresh si el navegador lo pausó
+    try { supabase.auth.startAutoRefresh?.(); } catch {}
+
+    // ✅ Marca "verificando" y repinta UNA vez (para que no quede pegado)
+    state.auth.ready = false;
+    render();
+
+    // ✅ Revalida sesión real + allowed_emails (con tu requireAuth con retry)
+    await requireAuth({ silent: true });
+
+    // ✅ Render final estable
+    render();
+  } finally {
+    __resumeLock = false;
+  }
+}
+
+
+
+    
     // ===== Boot: handle session, allowed emails gate =====
 async function bootstrap(maybeUser = null){
-  // ✅ Mientras se verifica, bloquea acciones (ready=false) pero NO renderices todavía (evita parpadeo)
+  // ✅ Mientras se verifica, bloquea acciones
   state.auth.ready = false;
 
-  // ✅ Si Supabase ya nos trae un user, pintamos optimista (solo UI) para que no "desaparezca" la sesión
+  // ✅ Render inmediato para que el UI muestre "Verificando sesión..."
+  render();
+
+  // ✅ Si Supabase ya trae un user, pintamos optimista (solo UI)
   if (maybeUser){
     state.auth.authed = true;
     state.auth.email = maybeUser.email || "";
     state.auth.photoUrl = maybeUser.user_metadata?.avatar_url || maybeUser.user_metadata?.picture || "";
+    render();
   }
 
   // ✅ Validación real (sesión + allowed_emails)
   await requireAuth({ silent: true });
 
-  // ✅ Un solo render al final (UI estable)
+  // ✅ Render final estable
   render();
 }
 
 
+
+
+
+
+    
 
     // 1) Render inicial (UI base)
     render();
@@ -1781,6 +1864,15 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     render();
   }
 });
+
+
+    // ✅ Cuando la app vuelve del reposo / se desbloquea / vuelve al foreground
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") handleAppResume();
+});
+
+window.addEventListener("focus", () => handleAppResume());
+window.addEventListener("pageshow", () => handleAppResume()); // iOS Safari/PWA lo dispara mucho al volver
 
 
     // 3) Bootstrap inicial con retry (por si onAuthStateChange tarda)
