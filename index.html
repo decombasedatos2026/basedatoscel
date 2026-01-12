@@ -590,7 +590,7 @@ if (bucket === "member-docs"){
         lastProgressAt = Date.now();
         const pct = bytesTotal ? Math.floor((bytesUploaded / bytesTotal) * 100) : 0;
         const badge = document.getElementById("statusBadge");
-        if (badge) badge.textContent = `Subiendo documento... ${pct}%`;
+        if (badge) badge.textContent = `Subiendo documento3... ${pct}%`;
       },
       onSuccess: () => {
         clearInterval(stallTimer);
@@ -1565,7 +1565,7 @@ if (bucket === "member-docs"){
           const photoFile = state.memberDraft.photo_file || null;
           const docFile = state.memberDraft.id_document_file || null;
 
-        $("#statusBadge").textContent = docFile ? "Subiendo documento..." : "Guardando...";
+        $("#statusBadge").textContent = docFile ? "Subiendo documento33..." : "Guardando...";
 
 
 const hasDoc = !!docFile;
