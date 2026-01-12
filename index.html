@@ -298,6 +298,40 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* ✅ FIX móvil: el input file no debe ensanchar la pantalla */
+input[type="file"]{
+  width: 100% !important;
+  max-width: 100% !important;
+  display: block;
+  overflow: hidden;
+}
+
+/* Evita que el nombre del archivo se salga (Safari/Chrome móvil) */
+input[type="file"]::-webkit-file-upload-button{
+  max-width: 100%;
+}
+
+/* En iOS a veces el texto del nombre del archivo se va largo */
+.filebox{
+  max-width: 100%;
+  overflow: hidden;
+}
+
+#photoFileBox{
+  max-width: 100%;
+}
+
+#photoInfo{
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Por si algún contenedor flex está empujando */
+.searchbar, .row, .col{
+  min-width: 0;
+}
 
     
   </style>
